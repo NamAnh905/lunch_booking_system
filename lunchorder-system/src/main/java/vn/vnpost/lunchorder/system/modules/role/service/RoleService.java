@@ -1,0 +1,18 @@
+package vn.vnpost.lunchorder.system.modules.role.service;
+
+import vn.vnpost.lunchorder.common.base.PageResponse;
+import vn.vnpost.lunchorder.system.modules.role.service.dto.RoleCreateRequest;
+import vn.vnpost.lunchorder.system.modules.role.service.dto.RoleResponse;
+import vn.vnpost.lunchorder.system.modules.role.service.dto.RoleUpdateRequest;
+
+public interface RoleService {
+    RoleResponse create(RoleCreateRequest request);
+
+    RoleResponse update(Long id, RoleUpdateRequest request);
+
+    void delete(Long id);
+
+    RoleResponse findByCode(String code);
+
+    PageResponse<RoleResponse> findAll(int page);
+}

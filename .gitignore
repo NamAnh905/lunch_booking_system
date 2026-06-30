@@ -1,0 +1,50 @@
+# Maven/Build outputs
+**/target/
+target/
+*.jar
+*.war
+*.ear
+
+# Logs
+*.log
+logs/
+server.log
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# Eclipse
+.apt_generated/
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+
+# NetBeans
+nbproject/private/
+build/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# VS Code
+.vscode/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Database & Temp scripts (Optional: uncomment if you want to ignore SQL dumps)
+# sql/*.sql
+
+# Local configuration files containing credentials/secrets
+*local.yml
+*local.properties
+application-local.yml
