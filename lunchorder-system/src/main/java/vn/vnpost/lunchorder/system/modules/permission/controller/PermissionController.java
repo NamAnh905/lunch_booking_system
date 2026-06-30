@@ -1,0 +1,62 @@
+package vn.vnpost.lunchorder.system.modules.permission.controller;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+import vn.vnpost.lunchorder.common.base.ApiResponse;
+import vn.vnpost.lunchorder.common.base.PageResponse;
+import vn.vnpost.lunchorder.system.modules.permission.service.PermissionService;
+import vn.vnpost.lunchorder.system.modules.permission.service.dto.PermissionCreateRequest;
+import vn.vnpost.lunchorder.system.modules.permission.service.dto.PermissionResponse;
+import vn.vnpost.lunchorder.system.modules.permission.service.dto.PermissionUpdateRequest;
+
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/admin/permissions")
+public class PermissionController {
+    private final PermissionService permissionService;
+
+    @PostMapping
+    @PreAuthorize("hasAuthority('MANAGE_PERMISSIONS')")
+    public ApiResponse<PermissionResponse> create(@RequestBody @Valid PermissionCreateRequest request) {
+        return ApiResponse.<PermissionResponse>builder()
+                .result(permissionService.create(request))
+                .build();
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('MANAGE_PERMISSIONS')")
+    public ApiResponse<PermissionResponse> update(@PathVariable Long id,
+            @RequestBody @Valid PermissionUpdateRequest request) {
+        return ApiResponse.<PermissionResponse>builder()
+                .result(permissionService.update(id, request))
+                .build();
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('MANAGE_PERMISSIONS')")
+    public ApiResponse<Void> delete(@PathVariable Long id) {
+        permissionService.delete(id);
+        return ApiResponse.<Void>builder()
+                .build();
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAuthority('VIEW_PERMISSIONS')")
+    public ApiResponse<PageResponse<PermissionResponse>> findAll(
+            @RequestParam(value = "page", defaultValue = "1") int page) {
+        return ApiResponse.<PageResponse<PermissionResponse>>builder()
+                .result(permissionService.findAll(page))
+                .build();
+    }
+
+    @GetMapping("/search")
+    @PreAuthorize("hasAuthority('VIEW_PERMISSIONS')")
+    public ApiResponse<PermissionResponse> findByAction(@RequestParam String action) {
+        return ApiResponse.<PermissionResponse>builder()
+                .result(permissionService.findByAction(action))
+                .build();
+    }
+}
