@@ -1,6 +1,7 @@
 package vn.vnpost.lunchorder.core.modules.menu.service;
 
 import java.time.LocalDate;
+import java.util.List;
 import vn.vnpost.lunchorder.common.base.PageResponse;
 import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuCreateRequest;
 import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuResponse;
@@ -17,5 +18,5 @@ public interface MenuService {
 
     MenuResponse findById(Long id);
 
-    MenuResponse findByDate(LocalDate date);
+    List<MenuResponse> findByDate(LocalDate date);
 }

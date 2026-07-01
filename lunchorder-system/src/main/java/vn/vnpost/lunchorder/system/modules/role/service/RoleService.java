@@ -1,5 +1,6 @@
 package vn.vnpost.lunchorder.system.modules.role.service;
 
+import java.util.Set;
 import vn.vnpost.lunchorder.common.base.PageResponse;
 import vn.vnpost.lunchorder.system.modules.role.service.dto.RoleCreateRequest;
 import vn.vnpost.lunchorder.system.modules.role.service.dto.RoleResponse;
@@ -15,4 +16,6 @@ public interface RoleService {
     RoleResponse findByCode(String code);
 
     PageResponse<RoleResponse> findAll(int page);
+
+    void assignPermissions(Long roleId, Set<String> permissionCodes);
 }

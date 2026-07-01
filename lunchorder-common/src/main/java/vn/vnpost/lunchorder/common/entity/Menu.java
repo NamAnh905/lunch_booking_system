@@ -12,14 +12,17 @@ import java.util.Set;
 @Getter
 @Setter
 @Entity
-@Table(name = "menu")
+@Table(
+    name = "menu",
+    uniqueConstraints = @UniqueConstraint(name = "unique_menu_date_special", columnNames = {"menu_date", "is_special"})
+)
 public class Menu extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "menu_date", unique = true)
+    @Column(name = "menu_date")
     private LocalDate menuDate;
 
     @Column(name = "price", precision = 10, scale = 2)

@@ -5,9 +5,11 @@ import org.springframework.stereotype.Repository;
 import vn.vnpost.lunchorder.common.entity.Menu;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface MenuRepository extends JpaRepository<Menu, Long> {
-    Optional<Menu> findByMenuDate(LocalDate menuDate);
+    List<Menu> findByMenuDate(LocalDate menuDate);
+    Optional<Menu> findByMenuDateAndIsSpecial(LocalDate menuDate, Boolean isSpecial);
 }

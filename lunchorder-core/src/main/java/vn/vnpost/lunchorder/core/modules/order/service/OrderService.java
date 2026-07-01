@@ -8,7 +8,7 @@ import java.util.List;
 public interface OrderService {
     List<OrderResponse> getMyOrders(Long userId, LocalDate fromDate, LocalDate toDate);
 
-    OrderResponse createOrder(Long userId, OrderCreateRequest request);
+    List<OrderResponse> createOrders(Long userId, OrderCreateRequest request);
 
     OrderResponse cancelOrder(Long userId, Long orderId);
 

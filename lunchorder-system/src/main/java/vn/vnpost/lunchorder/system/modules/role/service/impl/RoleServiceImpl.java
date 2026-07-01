@@ -23,6 +23,8 @@ import vn.vnpost.lunchorder.system.modules.role.service.dto.RoleResponse;
 import vn.vnpost.lunchorder.system.modules.role.service.dto.RoleUpdateRequest;
 import vn.vnpost.lunchorder.system.modules.role.service.mapstruct.RoleMapper;
 
+import java.util.Set;
+
 @Service
 @RequiredArgsConstructor
 public class RoleServiceImpl implements RoleService {
@@ -94,5 +96,23 @@ public class RoleServiceImpl implements RoleService {
                 .totalElements(rolePage.getTotalElements())
                 .data(dtoList)
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public void assignPermissions(Long roleId, Set<String> permissionCodes) {
+        Role role = roleRepository.findById(roleId)
+                .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
+
+        if (permissionCodes == null || permissionCodes.isEmpty()) {
+            role.setPermissions(new HashSet<>());
+        } else {
+            List<Permission> permissions = permissionRepository.findAllByActionIn(permissionCodes);
+            if (permissions.size() < permissionCodes.size()) {
+                throw new AppException(ErrorCode.PERMISSION_NOT_FOUND);
+            }
+            role.setPermissions(new HashSet<>(permissions));
+        }
+        roleRepository.save(role);
     }
 }

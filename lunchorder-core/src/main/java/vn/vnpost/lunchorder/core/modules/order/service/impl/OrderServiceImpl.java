@@ -16,8 +16,16 @@ import vn.vnpost.lunchorder.core.modules.order.service.dto.*;
 import vn.vnpost.lunchorder.core.modules.order.service.mapstruct.OrderMapper;
 import vn.vnpost.lunchorder.system.modules.user.repository.UserRepository;
 
+import vn.vnpost.lunchorder.common.enums.OrderStatus;
+import vn.vnpost.lunchorder.common.enums.TicketSource;
+import vn.vnpost.lunchorder.common.enums.TicketExchangeStatus;
+import vn.vnpost.lunchorder.common.repository.SystemConfigRepository;
+
+import vn.vnpost.lunchorder.core.modules.ticketexchange.repository.TicketExchangeRepository;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,9 +37,34 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final MenuRepository menuRepository;
     private final UserRepository userRepository;
+    private final SystemConfigRepository systemConfigRepository;
+    private final TicketExchangeRepository ticketExchangeRepository;
     private final OrderMapper orderMapper;
 
-    private static final LocalTime CUT_OFF_TIME = LocalTime.of(9, 0);
+    private boolean isCutOffReached(LocalDate menuDate) {
+        LocalDate today = LocalDate.now();
+        LocalDate cutoffDate = menuDate.minusDays(1);
+        if (today.isAfter(cutoffDate)) {
+            return true;
+        }
+        if (today.isEqual(cutoffDate)) {
+            return LocalTime.now().isAfter(getCutOffTime());
+        }
+        return false;
+    }
+
+    private LocalTime getCutOffTime() {
+        return systemConfigRepository.findByConfigKey("CUT_OFF_TIME")
+                .map(config -> {
+                    try {
+                        return LocalTime.parse(config.getConfigValue());
+                    } catch (Exception e) {
+                        log.error("Failed to parse CUT_OFF_TIME configuration: {}", config.getConfigValue(), e);
+                        return LocalTime.of(14, 45);
+                    }
+                })
+                .orElse(LocalTime.of(14, 45));
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -42,40 +75,89 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderResponse createOrder(Long userId, OrderCreateRequest request) {
+    public List<OrderResponse> createOrders(Long userId, OrderCreateRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        Menu menu = menuRepository.findById(request.getMenuId())
-                .orElseThrow(() -> new AppException(ErrorCode.MENU_NOT_FOUND));
+        List<OrderResponse> responses = new ArrayList<>();
+        for (Long menuId : request.getMenuIds()) {
+            try {
+                Menu menu = menuRepository.findById(menuId)
+                        .orElseThrow(() -> new AppException(ErrorCode.MENU_NOT_FOUND));
 
-        // Check if user already ordered a meal for this date (via menu)
-        if (orderRepository.findByUserIdAndMenuId(userId, request.getMenuId()).isPresent()) {
-            throw new AppException(ErrorCode.ORDER_ALREADY_EXISTS);
-        }
+                // Check time constraints (cutoff time is day before menu date)
+                if (isCutOffReached(menu.getMenuDate())) {
+                    throw new AppException(ErrorCode.ORDER_CUTOFF_REACHED);
+                }
 
-        // Check time constraints (cutoff time 9:00 AM on the day of the menu)
-        LocalDate menuDate = menu.getMenuDate();
-        LocalDate today = LocalDate.now();
-        if (menuDate.isBefore(today)) {
-            throw new AppException(ErrorCode.ORDER_CUTOFF_REACHED);
-        } else if (menuDate.isEqual(today)) {
-            if (LocalTime.now().isAfter(CUT_OFF_TIME)) {
-                throw new AppException(ErrorCode.ORDER_CUTOFF_REACHED);
+                // Check if user already ordered a meal for this date (via menu)
+                Optional<Order> existingOrderOpt = orderRepository.findByUserIdAndMenuId(userId, menuId);
+                if (existingOrderOpt.isPresent()) {
+                    Order existingOrder = existingOrderOpt.get();
+                    if (OrderStatus.CANCELLED.name().equalsIgnoreCase(existingOrder.getStatus())) {
+                        // Check if there is another active order on the same day
+                        final Long existingOrderId = existingOrder.getId();
+                        boolean hasActiveOrderOnSameDay = orderRepository
+                                .findByUserIdAndMenuMenuDateBetween(userId, menu.getMenuDate(), menu.getMenuDate())
+                                .stream()
+                                .anyMatch(o -> !OrderStatus.CANCELLED.name().equalsIgnoreCase(o.getStatus())
+                                        && !o.getId().equals(existingOrderId));
+                        if (hasActiveOrderOnSameDay) {
+                            throw new AppException(ErrorCode.ORDER_ALREADY_EXISTS);
+                        }
+
+                        // Upsert: Reactivate the cancelled order instead of inserting a new record
+                        existingOrder.setStatus(OrderStatus.PENDING.name());
+                        existingOrder.setPrice(menu.getPrice());
+                        existingOrder.setTicketSource(TicketSource.STANDARD.name());
+                        existingOrder.setIsPrinted(false);
+                        existingOrder.setOriginalUser(user);
+                        existingOrder = orderRepository.save(existingOrder);
+                        responses.add(orderMapper.toDto(existingOrder));
+                        continue;
+                    } else {
+                        throw new AppException(ErrorCode.ORDER_ALREADY_EXISTS);
+                    }
+                }
+
+                // Check if there is any active order for any menu on this day
+                boolean hasActiveOrderOnSameDay = orderRepository
+                        .findByUserIdAndMenuMenuDateBetween(userId, menu.getMenuDate(), menu.getMenuDate()).stream()
+                        .anyMatch(o -> !OrderStatus.CANCELLED.name().equalsIgnoreCase(o.getStatus()));
+                if (hasActiveOrderOnSameDay) {
+                    throw new AppException(ErrorCode.ORDER_ALREADY_EXISTS);
+                }
+
+                Order order = new Order();
+                order.setUser(user);
+                order.setMenu(menu);
+                order.setPrice(menu.getPrice());
+                order.setStatus(OrderStatus.PENDING.name());
+                order.setTicketSource(TicketSource.STANDARD.name());
+                order.setOriginalUser(user);
+                order.setIsPrinted(false);
+
+                order = orderRepository.save(order);
+                responses.add(orderMapper.toDto(order));
+            } catch (AppException e) {
+                OrderResponse failedResponse = new OrderResponse();
+                failedResponse.setMenuId(menuId);
+                failedResponse.setStatus("FAILED");
+                failedResponse.setErrorMessage(e.getErrorCode().getMessage());
+                try {
+                    menuRepository.findById(menuId).ifPresent(m -> failedResponse.setMenuDate(m.getMenuDate()));
+                } catch (Exception ignored) {
+                }
+                responses.add(failedResponse);
+            } catch (Exception e) {
+                OrderResponse failedResponse = new OrderResponse();
+                failedResponse.setMenuId(menuId);
+                failedResponse.setStatus("FAILED");
+                failedResponse.setErrorMessage(e.getMessage() != null ? e.getMessage() : "Unknown error");
+                responses.add(failedResponse);
             }
         }
-
-        Order order = new Order();
-        order.setUser(user);
-        order.setMenu(menu);
-        order.setPrice(menu.getPrice());
-        order.setStatus("PENDING");
-        order.setTicketSource("STANDARD");
-        order.setOriginalUser(user);
-        order.setIsPrinted(false);
-
-        order = orderRepository.save(order);
-        return orderMapper.toDto(order);
+        return responses;
     }
 
     @Override
@@ -88,22 +170,21 @@ public class OrderServiceImpl implements OrderService {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 
-        if (!"PENDING".equalsIgnoreCase(order.getStatus())) {
+        if (!OrderStatus.PENDING.name().equalsIgnoreCase(order.getStatus())) {
             throw new AppException(ErrorCode.ORDER_CANNOT_CANCEL);
         }
 
-        // Check time constraints
-        LocalDate menuDate = order.getMenu().getMenuDate();
-        LocalDate today = LocalDate.now();
-        if (menuDate.isBefore(today)) {
-            throw new AppException(ErrorCode.ORDER_CUTOFF_REACHED);
-        } else if (menuDate.isEqual(today)) {
-            if (LocalTime.now().isAfter(CUT_OFF_TIME)) {
-                throw new AppException(ErrorCode.ORDER_CUTOFF_REACHED);
-            }
+        // Prevent cancellation if the ticket is listed in the market
+        if (ticketExchangeRepository.findByOrderIdAndStatus(orderId, TicketExchangeStatus.OPEN.name()).isPresent()) {
+            throw new AppException(ErrorCode.ORDER_IN_MARKET);
         }
 
-        order.setStatus("CANCELLED");
+        // Check time constraints (cutoff time is day before menu date)
+        if (isCutOffReached(order.getMenu().getMenuDate())) {
+            throw new AppException(ErrorCode.ORDER_CUTOFF_REACHED);
+        }
+
+        order.setStatus(OrderStatus.CANCELLED.name());
         order = orderRepository.save(order);
         return orderMapper.toDto(order);
     }
@@ -117,7 +198,7 @@ public class OrderServiceImpl implements OrderService {
                 .totalCount(dtoList.size())
                 .orders(dtoList)
                 .build();
-        }
+    }
 
     @Override
     @Transactional
@@ -134,8 +215,8 @@ public class OrderServiceImpl implements OrderService {
         }
 
         order.setUser(targetUser);
-        order.setStatus("TRANSFERRED");
-        
+        order.setStatus(OrderStatus.TRANSFERRED.name());
+
         order = orderRepository.save(order);
         return orderMapper.toDto(order);
     }
