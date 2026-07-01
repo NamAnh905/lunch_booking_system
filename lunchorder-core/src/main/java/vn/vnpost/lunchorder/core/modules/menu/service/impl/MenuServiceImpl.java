@@ -37,7 +37,7 @@ public class MenuServiceImpl implements MenuService {
     @Override
     @Transactional
     public MenuResponse create(MenuCreateRequest request) {
-        if (menuRepository.findByMenuDate(request.getMenuDate()).isPresent()) {
+        if (menuRepository.findByMenuDateAndIsSpecial(request.getMenuDate(), request.getIsSpecial()).isPresent()) {
             throw new AppException(ErrorCode.MENU_ALREADY_EXISTS);
         }
 
@@ -58,7 +58,7 @@ public class MenuServiceImpl implements MenuService {
         Menu menu = menuRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.MENU_NOT_FOUND));
 
-        Optional<Menu> existingMenuOpt = menuRepository.findByMenuDate(request.getMenuDate());
+        Optional<Menu> existingMenuOpt = menuRepository.findByMenuDateAndIsSpecial(request.getMenuDate(), request.getIsSpecial());
         if (existingMenuOpt.isPresent() && !existingMenuOpt.get().getId().equals(id)) {
             throw new AppException(ErrorCode.MENU_ALREADY_EXISTS);
         }
@@ -113,9 +113,11 @@ public class MenuServiceImpl implements MenuService {
 
     @Override
     @Transactional(readOnly = true)
-    public MenuResponse findByDate(LocalDate date) {
-        Menu menu = menuRepository.findByMenuDate(date)
-                .orElseThrow(() -> new AppException(ErrorCode.MENU_NOT_FOUND));
-        return menuMapper.toDto(menu);
+    public List<MenuResponse> findByDate(LocalDate date) {
+        List<Menu> menus = menuRepository.findByMenuDate(date);
+        if (menus.isEmpty()) {
+            throw new AppException(ErrorCode.MENU_NOT_FOUND);
+        }
+        return menuMapper.toDtoList(menus);
     }
 }

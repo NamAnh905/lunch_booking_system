@@ -21,6 +21,11 @@ import vn.vnpost.lunchorder.system.modules.user.service.dto.UserCreateRequest;
 import vn.vnpost.lunchorder.system.modules.user.service.dto.UserResponse;
 import vn.vnpost.lunchorder.system.modules.user.service.dto.UserUpdateRequest;
 import vn.vnpost.lunchorder.system.modules.user.service.mapstruct.UserMapper;
+import vn.vnpost.lunchorder.system.modules.role.repository.RoleRepository;
+import vn.vnpost.lunchorder.common.entity.Role;
+import org.springframework.transaction.annotation.Transactional;
+import java.util.Set;
+import java.util.HashSet;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +34,7 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final DepartmentRepository departmentRepository;
     private final PasswordEncoder passwordEncoder;
+    private final RoleRepository roleRepository;
 
     private Department resolveDepartment(String departmentValue) {
         if (departmentValue == null) {
@@ -49,20 +55,49 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public UserResponse create(UserCreateRequest request) {
+        if (userRepository.findByEmployeeCode(request.getEmployeeCode()).isPresent()) {
+            throw new AppException(ErrorCode.USER_EMPLOYEE_CODE_EXISTS);
+        }
+        if (userRepository.findByUsername(request.getUsername()).isPresent()) {
+            throw new AppException(ErrorCode.USER_USERNAME_EXISTS);
+        }
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new AppException(ErrorCode.USER_EMAIL_EXISTS);
+        }
+
         User user = userMapper.toEntity(request);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         if (request.getDepartment() != null) {
             user.setDepartment(resolveDepartment(request.getDepartment()));
         }
+
+        // Auto assign role USER on creation
+        Role userRole = roleRepository.findByCode("USER")
+                .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
+        user.setRoles(new HashSet<>(Set.of(userRole)));
+
         User savedUser = userRepository.save(user);
         return userMapper.toDto(savedUser);
     }
 
     @Override
+    @Transactional
     public UserResponse update(Long id, UserUpdateRequest request) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if (request.getEmployeeCode() != null) {
+            userRepository.findByEmployeeCode(request.getEmployeeCode())
+                    .filter(u -> !u.getId().equals(id))
+                    .ifPresent(u -> { throw new AppException(ErrorCode.USER_EMPLOYEE_CODE_EXISTS); });
+        }
+        if (request.getEmail() != null) {
+            userRepository.findByEmail(request.getEmail())
+                    .filter(u -> !u.getId().equals(id))
+                    .ifPresent(u -> { throw new AppException(ErrorCode.USER_EMAIL_EXISTS); });
+        }
 
         userMapper.update(request, user);
         if (request.getDepartment() != null) {
@@ -74,6 +109,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public void delete(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -118,5 +154,23 @@ public class UserServiceImpl implements UserService {
     public List<UserResponse> search(String keyword) {
         List<User> users = userRepository.findByFullNameContainingIgnoreCaseOrEmployeeCodeContainingIgnoreCase(keyword, keyword);
         return userMapper.toDtoList(users);
+    }
+
+    @Override
+    @Transactional
+    public void assignRoles(Long userId, Set<String> roleCodes) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if (roleCodes == null || roleCodes.isEmpty()) {
+            user.setRoles(new HashSet<>());
+        } else {
+            List<Role> roles = roleRepository.findByCodeIn(roleCodes);
+            if (roles.size() < roleCodes.size()) {
+                throw new AppException(ErrorCode.ROLE_NOT_FOUND);
+            }
+            user.setRoles(new HashSet<>(roles));
+        }
+        userRepository.save(user);
     }
 }

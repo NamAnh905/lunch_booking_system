@@ -21,4 +21,5 @@ public class OrderResponse extends BaseResponse {
     private Boolean isSpecial;
     private Long originalUserId;
     private Boolean isPrinted;
+    private String errorMessage;
 }

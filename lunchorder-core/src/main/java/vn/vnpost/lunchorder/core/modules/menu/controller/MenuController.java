@@ -13,6 +13,7 @@ import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuResponse;
 import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuUpdateRequest;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -46,12 +47,12 @@ public class MenuController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('VIEW_ADMIN_MENUS')")
+    @PreAuthorize("hasAnyAuthority('VIEW_ADMIN_MENUS', 'CREATE_OWN_ORDER')")
     public ApiResponse<?> getMenus(
             @RequestParam(value = "date", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(value = "page", defaultValue = "1") int page) {
         if (date != null) {
-            return ApiResponse.<MenuResponse>builder()
+            return ApiResponse.<List<MenuResponse>>builder()
                     .result(menuService.findByDate(date))
                     .build();
         }
@@ -61,7 +62,7 @@ public class MenuController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('VIEW_ADMIN_MENUS')")
+    @PreAuthorize("hasAnyAuthority('VIEW_ADMIN_MENUS', 'CREATE_OWN_ORDER')")
     public ApiResponse<MenuResponse> findById(@PathVariable Long id) {
         return ApiResponse.<MenuResponse>builder()
                 .result(menuService.findById(id))

@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.Setter;
 import vn.vnpost.lunchorder.common.base.BaseResponse;
 
+import java.util.Set;
+
 @Getter
 @Setter
 @JsonIgnoreProperties(value = { "createdAt", "updatedAt", "createdBy", "updatedBy" })
@@ -16,4 +18,5 @@ public class UserResponse extends BaseResponse {
     private String email;
     private String department;
     private Boolean isActive;
+    private Set<String> roles;
 }

@@ -12,6 +12,9 @@ import vn.vnpost.lunchorder.system.modules.role.service.dto.RoleCreateRequest;
 import vn.vnpost.lunchorder.system.modules.role.service.dto.RoleResponse;
 import vn.vnpost.lunchorder.system.modules.role.service.dto.RoleUpdateRequest;
 
+import vn.vnpost.lunchorder.system.modules.role.service.dto.RoleAssignPermissionsRequest;
+import java.util.Set;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/admin/roles")
@@ -56,6 +59,17 @@ public class RoleController {
     public ApiResponse<RoleResponse> findByCode(@RequestParam String code) {
         return ApiResponse.<RoleResponse>builder()
                 .result(roleService.findByCode(code))
+                .build();
+    }
+
+    @PutMapping("/{id}/permissions")
+    @PreAuthorize("hasAuthority('ASSIGN_PERMISSIONS')")
+    public ApiResponse<Void> assignPermissions(
+            @PathVariable Long id,
+            @RequestBody @Valid RoleAssignPermissionsRequest request) {
+        roleService.assignPermissions(id, request.getPermissionCodes());
+        return ApiResponse.<Void>builder()
+                .message("Assign permissions to role success")
                 .build();
     }
 }

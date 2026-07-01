@@ -2,7 +2,7 @@ spring:
   application:
     name: LunchOrder
   profiles:
-    active: dev
+    active: dev,local
 
 server:
   port: 8080

@@ -35,11 +35,11 @@ public class OrderController {
 
     @PostMapping
     @PreAuthorize("hasAuthority('CREATE_OWN_ORDER')")
-    public ApiResponse<OrderResponse> create(
+    public ApiResponse<List<OrderResponse>> create(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @RequestBody @Valid OrderCreateRequest request) {
-        return ApiResponse.<OrderResponse>builder()
-                .result(orderService.createOrder(userPrincipal.getUserId(), request))
+        return ApiResponse.<List<OrderResponse>>builder()
+                .result(orderService.createOrders(userPrincipal.getUserId(), request))
                 .build();
     }
 

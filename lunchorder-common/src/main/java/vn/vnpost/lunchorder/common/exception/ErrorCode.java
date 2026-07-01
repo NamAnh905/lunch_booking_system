@@ -18,6 +18,9 @@ public enum ErrorCode {
     // 2xxx: User Management
     USER_NOT_FOUND(2001, "User not found", HttpStatus.NOT_FOUND),
     USER_LOCKED(2002, "User account is locked", HttpStatus.FORBIDDEN),
+    USER_USERNAME_EXISTS(2003, "Username already exists", HttpStatus.BAD_REQUEST),
+    USER_EMAIL_EXISTS(2004, "Email already exists", HttpStatus.BAD_REQUEST),
+    USER_EMPLOYEE_CODE_EXISTS(2005, "Employee code already exists", HttpStatus.BAD_REQUEST),
 
     // 3xxx: Role & Permission
     ROLE_NOT_FOUND(3001, "Role not found", HttpStatus.NOT_FOUND),
@@ -38,12 +41,21 @@ public enum ErrorCode {
     ORDER_CUTOFF_REACHED(7002, "Order or cancellation cutoff time has been reached", HttpStatus.BAD_REQUEST),
     ORDER_ALREADY_EXISTS(7003, "You have already ordered a meal for this date", HttpStatus.BAD_REQUEST),
     ORDER_CANNOT_CANCEL(7004, "This order cannot be cancelled", HttpStatus.BAD_REQUEST),
+    ORDER_IN_MARKET(7005, "Order is currently listed in the market", HttpStatus.BAD_REQUEST),
+    ORDER_CANNOT_PASS(7006, "Order cannot be passed", HttpStatus.BAD_REQUEST),
 
-    // 8xxx: Rating & Feedback
-    RATING_NOT_FOUND(8001, "Rating not found", HttpStatus.NOT_FOUND),
+    // 8xxx: Feedback
+    FEEDBACK_NOT_FOUND(8001, "Feedback not found", HttpStatus.NOT_FOUND),
+    FEEDBACK_CANNOT_CREATE(8002, "You must order this meal before giving feedback", HttpStatus.BAD_REQUEST),
+    FEEDBACK_ALREADY_EXISTS(8003, "You have already submitted feedback for this menu", HttpStatus.BAD_REQUEST),
 
     // 9xxx: Ticket Management
     TICKET_NOT_FOUND(9001, "Ticket not found", HttpStatus.NOT_FOUND),
+
+    // 10xxx: Ticket Exchange Management
+    EXCHANGE_NOT_FOUND(10001, "Exchange not found", HttpStatus.NOT_FOUND),
+    EXCHANGE_NOT_OPEN(10002, "Exchange is not open", HttpStatus.BAD_REQUEST),
+    CANNOT_CLAIM_OWN_TICKET(10003, "Cannot claim your own ticket", HttpStatus.BAD_REQUEST),
 
     // 11xxx: Notification Management
     NOTIFICATION_NOT_FOUND(11001, "Notification not found", HttpStatus.NOT_FOUND),
