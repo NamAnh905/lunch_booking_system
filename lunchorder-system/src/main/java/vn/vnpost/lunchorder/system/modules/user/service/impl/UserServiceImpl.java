@@ -57,14 +57,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserResponse create(UserCreateRequest request) {
-        if (userRepository.findByEmployeeCode(request.getEmployeeCode()).isPresent()) {
-            throw new AppException(ErrorCode.USER_EMPLOYEE_CODE_EXISTS);
-        }
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
             throw new AppException(ErrorCode.USER_USERNAME_EXISTS);
-        }
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new AppException(ErrorCode.USER_EMAIL_EXISTS);
         }
 
         User user = userMapper.toEntity(request);
@@ -87,17 +81,6 @@ public class UserServiceImpl implements UserService {
     public UserResponse update(Long id, UserUpdateRequest request) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-
-        if (request.getEmployeeCode() != null) {
-            userRepository.findByEmployeeCode(request.getEmployeeCode())
-                    .filter(u -> !u.getId().equals(id))
-                    .ifPresent(u -> { throw new AppException(ErrorCode.USER_EMPLOYEE_CODE_EXISTS); });
-        }
-        if (request.getEmail() != null) {
-            userRepository.findByEmail(request.getEmail())
-                    .filter(u -> !u.getId().equals(id))
-                    .ifPresent(u -> { throw new AppException(ErrorCode.USER_EMAIL_EXISTS); });
-        }
 
         userMapper.update(request, user);
         if (request.getDepartment() != null) {
@@ -125,13 +108,6 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserResponse findByEmployeeCode(String employeeCode) {
-        User user = userRepository.findByEmployeeCode(employeeCode)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        return userMapper.toDto(user);
-    }
-
-    @Override
     public PageResponse<UserResponse> findAll(int page) {
         int pageSize = 10;
         int pageNumber = Math.max(0, page - 1);
@@ -152,7 +128,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserResponse> search(String keyword) {
-        List<User> users = userRepository.findByFullNameContainingIgnoreCaseOrEmployeeCodeContainingIgnoreCase(keyword, keyword);
+        List<User> users = userRepository.findByFullNameContainingIgnoreCaseOrUsernameContainingIgnoreCase(keyword, keyword);
         return userMapper.toDtoList(users);
     }
 

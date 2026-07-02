@@ -59,6 +59,10 @@ public enum ErrorCode {
 
     // 11xxx: Notification Management
     NOTIFICATION_NOT_FOUND(11001, "Notification not found", HttpStatus.NOT_FOUND),
+
+    // 12xxx: Payment Management
+    PAYMENT_NOT_FOUND(12001, "Payment not found", HttpStatus.NOT_FOUND),
+    INVALID_ENUM_VALUE(12002, "Invalid enum value", HttpStatus.BAD_REQUEST),
     ;
 
     private final int code;

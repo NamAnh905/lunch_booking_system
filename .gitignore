@@ -41,9 +41,6 @@ nbdist/
 .DS_Store
 Thumbs.db
 
-# Database & Temp scripts (Optional: uncomment if you want to ignore SQL dumps)
-# sql/*.sql
-
 # Local configuration files containing credentials/secrets
 *local.yml
 *local.properties

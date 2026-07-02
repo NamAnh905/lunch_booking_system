@@ -13,9 +13,7 @@ import java.util.Set;
 @JsonIgnoreProperties(value = { "createdAt", "updatedAt", "createdBy", "updatedBy" })
 public class UserResponse extends BaseResponse {
     private String username;
-    private String employeeCode;
     private String fullName;
-    private String email;
     private String department;
     private Boolean isActive;
     private Set<String> roles;

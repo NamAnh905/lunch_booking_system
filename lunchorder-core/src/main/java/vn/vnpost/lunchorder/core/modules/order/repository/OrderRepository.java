@@ -1,6 +1,7 @@
 package vn.vnpost.lunchorder.core.modules.order.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -12,13 +13,21 @@ import java.util.Optional;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
-    
-    List<Order> findByUserIdAndMenuMenuDateBetween(Long userId, LocalDate fromDate, LocalDate toDate);
 
-    Optional<Order> findByUserIdAndMenuId(Long userId, Long menuId);
+       List<Order> findByUserIdAndMenuMenuDateBetween(Long userId, LocalDate fromDate, LocalDate toDate);
 
-    @Query("SELECT o FROM Order o JOIN o.menu m WHERE " +
-           "(:date IS NULL OR m.menuDate = :date) AND " +
-           "(:status IS NULL OR o.status = :status)")
-    List<Order> findByDateAndStatus(@Param("date") LocalDate date, @Param("status") String status);
+       Optional<Order> findByUserIdAndMenuId(Long userId, Long menuId);
+
+       @Query("SELECT o FROM Order o JOIN o.menu m WHERE " +
+                     "(:date IS NULL OR m.menuDate = :date) AND " +
+                     "(:status IS NULL OR o.status = :status)")
+       List<Order> findByDateAndStatus(@Param("date") LocalDate date, @Param("status") String status);
+
+       @Modifying
+       @Query("UPDATE Order o SET o.status = :newStatus, o.updatedAt = CURRENT_TIMESTAMP " +
+                     "WHERE o.menu.menuDate = :menuDate AND o.status = :currentStatus")
+       int updateStatusByMenuDateAndCurrentStatus(
+                     @Param("menuDate") LocalDate menuDate,
+                     @Param("currentStatus") String currentStatus,
+                     @Param("newStatus") String newStatus);
 }
