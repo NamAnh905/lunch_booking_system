@@ -16,8 +16,6 @@ public interface UserService {
 
     UserResponse findByUsername(String username);
 
-    UserResponse findByEmployeeCode(String employeeCode);
-
     PageResponse<UserResponse> findAll(int page);
 
     List<UserResponse> search(String keyword);

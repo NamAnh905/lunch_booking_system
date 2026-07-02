@@ -71,7 +71,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public TokenResponse login(LoginRequest request) {
-        User user = userRepository.findByUsernameOrEmail(request.getUsername(), request.getUsername())
+        User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         if (Boolean.FALSE.equals(user.getIsActive())) {
@@ -123,7 +123,7 @@ public class AuthServiceImpl implements AuthService {
             invalidatedTokenRepository.save(invalidatedToken);
 
             String emailOrUsername = signedJWT.getJWTClaimsSet().getSubject();
-            User user = userRepository.findByUsernameOrEmail(emailOrUsername, emailOrUsername)
+            User user = userRepository.findByUsername(emailOrUsername)
                     .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
 
             if (Boolean.FALSE.equals(user.getIsActive())) {
@@ -147,7 +147,7 @@ public class AuthServiceImpl implements AuthService {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
 
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
-                .subject(user.getUsername() != null ? user.getUsername() : user.getEmail())
+                .subject(user.getUsername())
                 .issuer("vnpost.vn")
                 .issueTime(new Date())
                 .expirationTime(new Date(
