@@ -29,6 +29,7 @@ import java.util.HashSet;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
@@ -67,10 +68,14 @@ public class UserServiceImpl implements UserService {
             user.setDepartment(resolveDepartment(request.getDepartment()));
         }
 
-        // Auto assign role USER on creation
-        Role userRole = roleRepository.findByCode("USER")
-                .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
-        user.setRoles(new HashSet<>(Set.of(userRole)));
+        if (request.getRoles() != null && !request.getRoles().isEmpty()) {
+            List<Role> roles = roleRepository.findByCodeIn(request.getRoles());
+            user.setRoles(new HashSet<>(roles));
+        } else {
+            Role userRole = roleRepository.findByCode("USER")
+                    .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
+            user.setRoles(new HashSet<>(Set.of(userRole)));
+        }
 
         User savedUser = userRepository.save(user);
         return userMapper.toDto(savedUser);
@@ -85,6 +90,19 @@ public class UserServiceImpl implements UserService {
         userMapper.update(request, user);
         if (request.getDepartment() != null) {
             user.setDepartment(resolveDepartment(request.getDepartment()));
+        }
+        
+        if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
+        }
+
+        if (request.getRoles() != null) {
+            if (request.getRoles().isEmpty()) {
+                user.setRoles(new HashSet<>());
+            } else {
+                List<Role> roles = roleRepository.findByCodeIn(request.getRoles());
+                user.setRoles(new HashSet<>(roles));
+            }
         }
 
         User savedUser = userRepository.save(user);
@@ -108,12 +126,17 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public PageResponse<UserResponse> findAll(int page) {
+    public PageResponse<UserResponse> findAll(int page, String keyword) {
         int pageSize = 10;
         int pageNumber = Math.max(0, page - 1);
         Pageable pageable = PageRequest.of(pageNumber, pageSize);
 
-        Page<User> userPage = userRepository.findAll(pageable);
+        Page<User> userPage;
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            userPage = userRepository.findByFullNameContainingIgnoreCaseOrUsernameContainingIgnoreCase(keyword, keyword, pageable);
+        } else {
+            userPage = userRepository.findAll(pageable);
+        }
 
         List<UserResponse> dtoList = userMapper.toDtoList(userPage.getContent());
 

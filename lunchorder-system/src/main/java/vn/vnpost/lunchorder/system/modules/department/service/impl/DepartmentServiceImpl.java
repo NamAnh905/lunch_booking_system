@@ -1,6 +1,8 @@
 package vn.vnpost.lunchorder.system.modules.department.service.impl;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -22,9 +24,21 @@ import vn.vnpost.lunchorder.system.modules.department.service.mapstruct.Departme
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class DepartmentServiceImpl implements DepartmentService {
     private final DepartmentRepository departmentRepository;
     private final DepartmentMapper departmentMapper;
+
+    private void populateUserCounts(List<Department> departments) {
+        if (departments.isEmpty()) return;
+        Map<Long, Long> countMap = departmentRepository.countUsersByDepartment()
+                .stream()
+                .collect(Collectors.toMap(
+                        row -> ((Number) row[0]).longValue(),
+                        row -> ((Number) row[1]).longValue()
+                ));
+        departments.forEach(dept -> dept.setUserCount(countMap.getOrDefault(dept.getId(), 0L)));
+    }
 
     @Override
     @Transactional
@@ -66,24 +80,32 @@ public class DepartmentServiceImpl implements DepartmentService {
     @Override
     public List<DepartmentResponse> search(String keyword) {
         List<Department> departments = departmentRepository.findByCodeContainingIgnoreCaseOrNameContainingIgnoreCase(keyword, keyword);
+        populateUserCounts(departments);
         return departmentMapper.toDtoList(departments);
     }
 
     @Override
-    public PageResponse<DepartmentResponse> findAll(int page) {
-        int pageSize = 10;
+    public PageResponse<DepartmentResponse> findAll(String keyword, int page, int size) {
         int pageNumber = Math.max(0, page - 1);
-        Pageable pageable = PageRequest.of(pageNumber, pageSize);
+        Pageable pageable = PageRequest.of(pageNumber, size);
 
-        Page<Department> departmentPage = departmentRepository.findAll(pageable);
+        Page<Department> departmentPage;
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            departmentPage = departmentRepository.findByCodeContainingIgnoreCaseOrNameContainingIgnoreCase(keyword.trim(), keyword.trim(), pageable);
+        } else {
+            departmentPage = departmentRepository.findAll(pageable);
+        }
+
+        populateUserCounts(departmentPage.getContent());
         List<DepartmentResponse> dtoList = departmentMapper.toDtoList(departmentPage.getContent());
 
         return PageResponse.<DepartmentResponse>builder()
                 .currentPage(page)
                 .totalPages(departmentPage.getTotalPages())
-                .pageSize(pageSize)
+                .pageSize(size)
                 .totalElements(departmentPage.getTotalElements())
                 .data(dtoList)
                 .build();
     }
 }
+

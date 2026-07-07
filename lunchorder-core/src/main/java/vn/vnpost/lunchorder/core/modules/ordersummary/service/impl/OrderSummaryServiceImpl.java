@@ -30,6 +30,7 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class OrderSummaryServiceImpl implements OrderSummaryService {
 
     private final OrderSummaryRepository orderSummaryRepository;
@@ -38,7 +39,6 @@ public class OrderSummaryServiceImpl implements OrderSummaryService {
     private final SystemConfigRepository systemConfigRepository;
 
     @Override
-    @Transactional(readOnly = true)
     public DailyOrderSummaryResponse getDailySummary(LocalDate date, Long departmentId) {
         List<Object[]> rawData = orderSummaryRepository.findDailySummary(date, departmentId);
 
@@ -64,7 +64,6 @@ public class OrderSummaryServiceImpl implements OrderSummaryService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public MonthlyOrderSummaryResponse getMonthlySummary(int month, int year, Long departmentId) {
         List<Object[]> rawData = orderSummaryRepository.findMonthlySummary(month, year, departmentId);
 
@@ -108,7 +107,6 @@ public class OrderSummaryServiceImpl implements OrderSummaryService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public byte[] exportDailyExcel(LocalDate date, Long departmentId) {
         DailyOrderSummaryResponse summary = getDailySummary(date, departmentId);
 
@@ -255,7 +253,6 @@ public class OrderSummaryServiceImpl implements OrderSummaryService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public void sendDailyReportEmail(LocalDate date) {
         String[] adminEmails = systemConfigRepository.findByConfigKey("ADMIN_REPORT_EMAILS")
                 .map(config -> config.getConfigValue().split(","))
@@ -279,7 +276,6 @@ public class OrderSummaryServiceImpl implements OrderSummaryService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public byte[] exportMonthlyMatrixExcel(int month, int year, Long departmentId) {
         MonthlyOrderSummaryResponse summary = getMonthlySummary(month, year, departmentId);
 
@@ -310,7 +306,8 @@ public class OrderSummaryServiceImpl implements OrderSummaryService {
                 date = LocalDate.parse(dateObj.toString());
             }
 
-            Boolean isSpecial = row[2] != null ? (Boolean) row[2] : false;
+            BigDecimal priceObj = row[2] != null ? (BigDecimal) row[2] : BigDecimal.ZERO;
+            Boolean isSpecial = priceObj.compareTo(new BigDecimal("25000")) > 0;
 
             if (userId != null && date != null) {
                 int day = date.getDayOfMonth();
@@ -786,7 +783,6 @@ public class OrderSummaryServiceImpl implements OrderSummaryService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public void sendMonthlyReportEmail(int month, int year) {
         String[] adminEmails = systemConfigRepository.findByConfigKey("ADMIN_REPORT_EMAILS")
                 .map(config -> config.getConfigValue().split(","))

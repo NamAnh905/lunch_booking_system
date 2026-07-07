@@ -31,6 +31,7 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class FeedbackServiceImpl implements FeedbackService {
 
     private final FeedbackRepository feedbackRepository;
@@ -69,7 +70,6 @@ public class FeedbackServiceImpl implements FeedbackService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public PageResponse<FeedbackResponse> getFeedbacks(int page) {
         int pageSize = 10;
         int pageNumber = Math.max(0, page - 1);

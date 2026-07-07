@@ -30,5 +30,5 @@ logging:
 
 jwt:
   signerKey: ${JWT_SIGNER_KEY}
-  valid-duration: 3600
-  refreshable-duration: 86400
+  valid-duration: 300
+  refreshable-duration: 3600

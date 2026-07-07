@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import vn.vnpost.lunchorder.common.entity.InvalidatedToken;
 import vn.vnpost.lunchorder.common.entity.User;
 import vn.vnpost.lunchorder.common.exception.AppException;
@@ -38,6 +39,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Transactional(readOnly = true)
 public class AuthServiceImpl implements AuthService {
 
     UserRepository userRepository;
@@ -83,7 +85,8 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
 
-        String token = generateToken(user);
+        Instant refreshExpiry = Instant.now().plus(REFRESHABLE_DURATION, ChronoUnit.SECONDS);
+        String token = generateToken(user, refreshExpiry);
         return TokenResponse.builder()
                 .token(token)
                 .authenticated(true)
@@ -91,15 +94,20 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional
     public void logout(LogoutRequest request) {
         try {
             SignedJWT signedJWT = verifyToken(request.getToken(), true);
             String jit = signedJWT.getJWTClaimsSet().getJWTID();
-            Date expiryTime = signedJWT.getJWTClaimsSet().getExpirationTime();
+            
+            Long refreshExpiryMillis = signedJWT.getJWTClaimsSet().getLongClaim("refreshExpiry");
+            Instant expiryTime = refreshExpiryMillis != null
+                    ? Instant.ofEpochMilli(refreshExpiryMillis)
+                    : signedJWT.getJWTClaimsSet().getIssueTime().toInstant().plus(REFRESHABLE_DURATION, ChronoUnit.SECONDS);
 
             InvalidatedToken invalidatedToken = new InvalidatedToken();
             invalidatedToken.setToken(jit);
-            invalidatedToken.setExpiryTime(expiryTime.toInstant());
+            invalidatedToken.setExpiryTime(expiryTime);
 
             invalidatedTokenRepository.save(invalidatedToken);
         } catch (AppException e) {
@@ -110,16 +118,21 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional
     public TokenResponse refreshToken(RefreshRequest request) {
         try {
             SignedJWT signedJWT = verifyToken(request.getToken(), true);
             String jit = signedJWT.getJWTClaimsSet().getJWTID();
-            Date expiryTime = signedJWT.getJWTClaimsSet().getExpirationTime();
+            
+            Long refreshExpiryMillis = signedJWT.getJWTClaimsSet().getLongClaim("refreshExpiry");
+            Instant expiryTime = refreshExpiryMillis != null
+                    ? Instant.ofEpochMilli(refreshExpiryMillis)
+                    : signedJWT.getJWTClaimsSet().getIssueTime().toInstant().plus(REFRESHABLE_DURATION, ChronoUnit.SECONDS);
 
             // Blacklist the old token
             InvalidatedToken invalidatedToken = new InvalidatedToken();
             invalidatedToken.setToken(jit);
-            invalidatedToken.setExpiryTime(expiryTime.toInstant());
+            invalidatedToken.setExpiryTime(expiryTime);
             invalidatedTokenRepository.save(invalidatedToken);
 
             String emailOrUsername = signedJWT.getJWTClaimsSet().getSubject();
@@ -130,7 +143,7 @@ public class AuthServiceImpl implements AuthService {
                 throw new AppException(ErrorCode.USER_LOCKED);
             }
 
-            String token = generateToken(user);
+            String token = generateToken(user, expiryTime);
             return TokenResponse.builder()
                     .token(token)
                     .authenticated(true)
@@ -143,7 +156,7 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
-    private String generateToken(User user) {
+    private String generateToken(User user, Instant refreshExpiry) {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
 
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
@@ -155,6 +168,7 @@ public class AuthServiceImpl implements AuthService {
                 .jwtID(UUID.randomUUID().toString())
                 .claim("userId", user.getId())
                 .claim("scope", buildScope(user))
+                .claim("refreshExpiry", refreshExpiry.toEpochMilli())
                 .build();
 
         Payload payload = new Payload(jwtClaimsSet.toJSONObject());
@@ -173,9 +187,12 @@ public class AuthServiceImpl implements AuthService {
         JWSVerifier verifier = new MACVerifier(SIGNER_KEY.getBytes());
         SignedJWT signedJWT = SignedJWT.parse(token);
 
+        Long refreshExpiryMillis = signedJWT.getJWTClaimsSet().getLongClaim("refreshExpiry");
         Date expiryTime = isRefresh
-                ? new Date(signedJWT.getJWTClaimsSet().getIssueTime().toInstant()
-                    .plus(REFRESHABLE_DURATION, ChronoUnit.SECONDS).toEpochMilli())
+                ? (refreshExpiryMillis != null
+                    ? new Date(refreshExpiryMillis)
+                    : new Date(signedJWT.getJWTClaimsSet().getIssueTime().toInstant()
+                        .plus(REFRESHABLE_DURATION, ChronoUnit.SECONDS).toEpochMilli()))
                 : signedJWT.getJWTClaimsSet().getExpirationTime();
 
         boolean verified = signedJWT.verify(verifier);

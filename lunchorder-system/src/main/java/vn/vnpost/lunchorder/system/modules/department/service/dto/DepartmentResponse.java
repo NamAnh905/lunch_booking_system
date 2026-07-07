@@ -12,4 +12,5 @@ import vn.vnpost.lunchorder.common.base.BaseResponse;
 public class DepartmentResponse extends BaseResponse {
     private String code;
     private String name;
+    private Long userCount;
 }

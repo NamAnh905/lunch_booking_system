@@ -14,4 +14,5 @@ import java.util.Set;
 public interface RoleRepository extends JpaRepository<Role, Long> {
     Optional<Role> findByCode(String code);
     List<Role> findByCodeIn(Set<String> codes);
+    List<Role> findByNameContainingIgnoreCaseOrCodeContainingIgnoreCase(String name, String code);
 }

@@ -9,5 +9,6 @@ import java.time.Instant;
 @Repository
 public interface InvalidatedTokenRepository extends JpaRepository<InvalidatedToken, Long> {
     boolean existsByToken(String token);
+
     void deleteByExpiryTimeBefore(Instant expiryTime);
 }

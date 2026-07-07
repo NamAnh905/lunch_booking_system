@@ -1,6 +1,7 @@
 package vn.vnpost.lunchorder.system.modules.user.service.dto;
 
-import jakarta.validation.constraints.Email;
+import java.util.Set;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -17,4 +18,8 @@ public class UserUpdateRequest {
 
     @NotNull(message = "Trạng thái hoạt động không được để trống.")
     private Boolean isActive;
+
+    private String password;
+
+    private Set<String> roles;
 }

@@ -47,10 +47,10 @@ public class RoleController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('VIEW_ROLES')")
-    public ApiResponse<PageResponse<RoleResponse>> findAll(
-            @RequestParam(value = "page", defaultValue = "1") int page) {
-        return ApiResponse.<PageResponse<RoleResponse>>builder()
-                .result(roleService.findAll(page))
+    public ApiResponse<java.util.List<RoleResponse>> findAll(
+            @RequestParam(value = "keyword", required = false) String keyword) {
+        return ApiResponse.<java.util.List<RoleResponse>>builder()
+                .result(roleService.findAll(keyword))
                 .build();
     }
 

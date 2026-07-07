@@ -50,14 +50,16 @@ public class MenuController {
     @PreAuthorize("hasAnyAuthority('VIEW_ADMIN_MENUS', 'CREATE_OWN_ORDER')")
     public ApiResponse<?> getMenus(
             @RequestParam(value = "date", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam(value = "page", defaultValue = "1") int page) {
+            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size,
+            @RequestParam(value = "keyword", required = false) String keyword) {
         if (date != null) {
             return ApiResponse.<List<MenuResponse>>builder()
                     .result(menuService.findByDate(date))
                     .build();
         }
         return ApiResponse.<PageResponse<MenuResponse>>builder()
-                .result(menuService.findAll(page))
+                .result(menuService.findAll(page, size, keyword))
                 .build();
     }
 

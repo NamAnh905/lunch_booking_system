@@ -63,6 +63,9 @@ public enum ErrorCode {
     // 12xxx: Payment Management
     PAYMENT_NOT_FOUND(12001, "Payment not found", HttpStatus.NOT_FOUND),
     INVALID_ENUM_VALUE(12002, "Invalid enum value", HttpStatus.BAD_REQUEST),
+
+    // 13xxx: Price Management
+    PRICE_NOT_FOUND(13001, "Price not found", HttpStatus.NOT_FOUND),
     ;
 
     private final int code;

@@ -14,5 +14,5 @@ public interface PermissionService {
 
     PermissionResponse findByAction(String action);
 
-    PageResponse<PermissionResponse> findAll(int page);
+    PageResponse<PermissionResponse> findAll(String keyword, int page, int size);
 }

@@ -48,9 +48,11 @@ public class DishController {
     @GetMapping
     @PreAuthorize("hasAuthority('VIEW_DISHES')")
     public ApiResponse<PageResponse<DishResponse>> findAll(
-            @RequestParam(value = "page", defaultValue = "1") int page) {
+            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size,
+            @RequestParam(value = "keyword", required = false) String keyword) {
         return ApiResponse.<PageResponse<DishResponse>>builder()
-                .result(dishService.findAll(page))
+                .result(dishService.findAll(page, size, keyword))
                 .build();
     }
 

@@ -18,7 +18,9 @@ public class OrderResponse extends BaseResponse {
     private BigDecimal price;
     private String status;
     private String ticketSource;
-    private Boolean isSpecial;
+    public Boolean getIsSpecial() {
+        return price != null && price.compareTo(new BigDecimal("25000")) > 0;
+    }
     private Long originalUserId;
     private Boolean isPrinted;
     private String errorMessage;

@@ -5,8 +5,8 @@ import lombok.Getter;
 import lombok.Setter;
 import vn.vnpost.lunchorder.common.base.BaseResponse;
 import vn.vnpost.lunchorder.core.modules.dish.service.dto.DishResponse;
+import vn.vnpost.lunchorder.core.modules.price.service.dto.PriceResponse;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Set;
 
@@ -15,10 +15,9 @@ import java.util.Set;
 @JsonIgnoreProperties(value = { "createdAt", "updatedAt", "createdBy", "updatedBy" })
 public class MenuResponse extends BaseResponse {
     private LocalDate menuDate;
-    private BigDecimal price;
-    private Boolean isSpecial;
+    private PriceResponse price;
     private String status;
 
-    @JsonIgnoreProperties(value = { "id", "description", "isActive" })
+    @JsonIgnoreProperties(value = { "description", "isActive" })
     private Set<DishResponse> dishes;
 }

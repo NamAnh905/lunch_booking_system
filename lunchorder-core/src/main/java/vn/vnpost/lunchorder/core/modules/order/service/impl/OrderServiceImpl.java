@@ -32,6 +32,7 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
@@ -67,7 +68,6 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<OrderResponse> getMyOrders(Long userId, LocalDate fromDate, LocalDate toDate) {
         List<Order> orders = orderRepository.findByUserIdAndMenuMenuDateBetween(userId, fromDate, toDate);
         return orderMapper.toDtoList(orders);
@@ -108,7 +108,7 @@ public class OrderServiceImpl implements OrderService {
 
                         // Upsert: Reactivate the cancelled order instead of inserting a new record
                         existingOrder.setStatus(OrderStatus.PENDING.name());
-                        existingOrder.setPrice(menu.getPrice());
+                        existingOrder.setPrice(menu.getPrice().getAmount());
                         existingOrder.setTicketSource(TicketSource.STANDARD.name());
                         existingOrder.setIsPrinted(false);
                         existingOrder.setOriginalUser(user);
@@ -131,7 +131,7 @@ public class OrderServiceImpl implements OrderService {
                 Order order = new Order();
                 order.setUser(user);
                 order.setMenu(menu);
-                order.setPrice(menu.getPrice());
+                order.setPrice(menu.getPrice().getAmount());
                 order.setStatus(OrderStatus.PENDING.name());
                 order.setTicketSource(TicketSource.STANDARD.name());
                 order.setOriginalUser(user);
@@ -190,7 +190,6 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public AdminOrderListResponse getAdminOrders(LocalDate date, String status) {
         List<Order> orders = orderRepository.findByDateAndStatus(date, status);
         List<OrderResponse> dtoList = orderMapper.toDtoList(orders);

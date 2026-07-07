@@ -22,6 +22,7 @@ import vn.vnpost.lunchorder.system.modules.permission.service.mapstruct.Permissi
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class PermissionServiceImpl implements PermissionService {
     private final PermissionRepository permissionRepository;
     private final PermissionMapper permissionMapper;
@@ -64,18 +65,23 @@ public class PermissionServiceImpl implements PermissionService {
     }
 
     @Override
-    public PageResponse<PermissionResponse> findAll(int page) {
-        int pageSize = 10;
+    public PageResponse<PermissionResponse> findAll(String keyword, int page, int size) {
         int pageNumber = Math.max(0, page - 1);
-        Pageable pageable = PageRequest.of(pageNumber, pageSize);
+        Pageable pageable = PageRequest.of(pageNumber, size);
 
-        Page<Permission> permissionPage = permissionRepository.findAll(pageable);
+        Page<Permission> permissionPage;
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            permissionPage = permissionRepository.findByActionContainingIgnoreCaseOrDescriptionContainingIgnoreCase(keyword, keyword, pageable);
+        } else {
+            permissionPage = permissionRepository.findAll(pageable);
+        }
+
         List<PermissionResponse> dtoList = permissionMapper.toDtoList(permissionPage.getContent());
 
         return PageResponse.<PermissionResponse>builder()
                 .currentPage(page)
                 .totalPages(permissionPage.getTotalPages())
-                .pageSize(pageSize)
+                .pageSize(size)
                 .totalElements(permissionPage.getTotalElements())
                 .data(dtoList)
                 .build();

@@ -16,7 +16,7 @@ public interface TicketExchangeMapper {
     @Mapping(target = "sellerName", source = "order.originalUser.fullName")
     @Mapping(target = "sellerId", source = "order.originalUser.id")
     @Mapping(target = "menuDate", source = "order.menu.menuDate")
-    @Mapping(target = "isSpecial", source = "order.menu.isSpecial")
+    @Mapping(target = "price", source = "order.price")
     @Mapping(target = "buyerId", source = "buyer.id")
     @Mapping(target = "buyerName", source = "buyer.fullName")
     TicketExchangeResponse toDto(TicketExchange ticketExchange);

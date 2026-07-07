@@ -14,6 +14,8 @@ import vn.vnpost.lunchorder.common.exception.AppException;
 import vn.vnpost.lunchorder.common.exception.ErrorCode;
 import vn.vnpost.lunchorder.core.modules.dish.repository.DishRepository;
 import vn.vnpost.lunchorder.core.modules.menu.repository.MenuRepository;
+import vn.vnpost.lunchorder.core.modules.price.repository.PriceRepository;
+import vn.vnpost.lunchorder.common.entity.Price;
 import vn.vnpost.lunchorder.core.modules.menu.service.MenuService;
 import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuCreateRequest;
 import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuResponse;
@@ -28,20 +30,26 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class MenuServiceImpl implements MenuService {
 
     private final MenuRepository menuRepository;
     private final MenuMapper menuMapper;
     private final DishRepository dishRepository;
+    private final PriceRepository priceRepository;
 
     @Override
     @Transactional
     public MenuResponse create(MenuCreateRequest request) {
-        if (menuRepository.findByMenuDateAndIsSpecial(request.getMenuDate(), request.getIsSpecial()).isPresent()) {
+        if (menuRepository.findByMenuDateAndPriceId(request.getMenuDate(), request.getPriceId()).isPresent()) {
             throw new AppException(ErrorCode.MENU_ALREADY_EXISTS);
         }
 
+        Price price = priceRepository.findById(request.getPriceId())
+                .orElseThrow(() -> new AppException(ErrorCode.PRICE_NOT_FOUND));
+
         Menu menu = menuMapper.toEntity(request);
+        menu.setPrice(price);
 
         if (request.getDishIds() != null && !request.getDishIds().isEmpty()) {
             List<Dish> dishes = dishRepository.findAllById(request.getDishIds());
@@ -58,12 +66,16 @@ public class MenuServiceImpl implements MenuService {
         Menu menu = menuRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.MENU_NOT_FOUND));
 
-        Optional<Menu> existingMenuOpt = menuRepository.findByMenuDateAndIsSpecial(request.getMenuDate(), request.getIsSpecial());
+        Optional<Menu> existingMenuOpt = menuRepository.findByMenuDateAndPriceId(request.getMenuDate(), request.getPriceId());
         if (existingMenuOpt.isPresent() && !existingMenuOpt.get().getId().equals(id)) {
             throw new AppException(ErrorCode.MENU_ALREADY_EXISTS);
         }
 
+        Price price = priceRepository.findById(request.getPriceId())
+                .orElseThrow(() -> new AppException(ErrorCode.PRICE_NOT_FOUND));
+
         menuMapper.update(request, menu);
+        menu.setPrice(price);
 
         if (request.getDishIds() != null) {
             List<Dish> dishes = dishRepository.findAllById(request.getDishIds());
@@ -85,26 +97,23 @@ public class MenuServiceImpl implements MenuService {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public PageResponse<MenuResponse> findAll(int page) {
-        int pageSize = 10;
+    public PageResponse<MenuResponse> findAll(int page, int size, String keyword) {
         int pageNumber = Math.max(0, page - 1);
-        Pageable pageable = PageRequest.of(pageNumber, pageSize);
+        Pageable pageable = PageRequest.of(pageNumber, size);
 
-        Page<Menu> menuPage = menuRepository.findAll(pageable);
+        Page<Menu> menuPage = menuRepository.searchMenus(keyword, pageable);
         List<MenuResponse> dtoList = menuMapper.toDtoList(menuPage.getContent());
 
         return PageResponse.<MenuResponse>builder()
                 .currentPage(page)
                 .totalPages(menuPage.getTotalPages())
-                .pageSize(pageSize)
+                .pageSize(size)
                 .totalElements(menuPage.getTotalElements())
                 .data(dtoList)
                 .build();
     }
 
     @Override
-    @Transactional(readOnly = true)
     public MenuResponse findById(Long id) {
         Menu menu = menuRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.MENU_NOT_FOUND));
@@ -112,7 +121,6 @@ public class MenuServiceImpl implements MenuService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<MenuResponse> findByDate(LocalDate date) {
         List<Menu> menus = menuRepository.findByMenuDate(date);
         if (menus.isEmpty()) {

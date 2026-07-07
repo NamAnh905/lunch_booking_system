@@ -23,11 +23,10 @@ public class Role extends BaseEntity {
     @Column(name = "name")
     private String name;
 
+    @Column(name = "description", length = 500)
+    private String description;
+
     @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-        name = "role_permission",
-        joinColumns = @JoinColumn(name = "role_id"),
-        inverseJoinColumns = @JoinColumn(name = "permission_id")
-    )
+    @JoinTable(name = "role_permission", joinColumns = @JoinColumn(name = "role_id"), inverseJoinColumns = @JoinColumn(name = "permission_id"))
     private Set<Permission> permissions;
 }

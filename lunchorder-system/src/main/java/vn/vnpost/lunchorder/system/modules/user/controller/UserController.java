@@ -47,9 +47,10 @@ public class UserController {
     @GetMapping
     @PreAuthorize("hasAuthority('VIEW_USERS')")
     public ApiResponse<PageResponse<UserResponse>> findAll(
-            @RequestParam(value = "page", defaultValue = "1") int page) {
+            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "keyword", required = false) String keyword) {
         return ApiResponse.<PageResponse<UserResponse>>builder()
-                .result(userService.findAll(page))
+                .result(userService.findAll(page, keyword))
                 .build();
     }
 

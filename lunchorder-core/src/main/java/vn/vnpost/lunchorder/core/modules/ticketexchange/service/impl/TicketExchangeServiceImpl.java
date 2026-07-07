@@ -33,6 +33,7 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class TicketExchangeServiceImpl implements TicketExchangeService {
 
     private final TicketExchangeRepository ticketExchangeRepository;
@@ -68,7 +69,6 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public PageResponse<TicketExchangeResponse> getOpenExchanges(int page, int size) {
         int pageNumber = Math.max(0, page - 1);
         Pageable pageable = PageRequest.of(pageNumber, size);
@@ -236,7 +236,6 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<TicketExchangeResponse> getAdminExchanges(LocalDate startDate, String status) {
         Instant startInstant = startDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
         List<TicketExchange> list;

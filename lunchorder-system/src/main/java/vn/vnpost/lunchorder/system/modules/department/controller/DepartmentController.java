@@ -48,9 +48,11 @@ public class DepartmentController {
     @GetMapping
     @PreAuthorize("hasAuthority('VIEW_DEPARTMENTS')")
     public ApiResponse<PageResponse<DepartmentResponse>> findAll(
-            @RequestParam(value = "page", defaultValue = "1") int page) {
+            @RequestParam(value = "keyword", required = false, defaultValue = "") String keyword,
+            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size) {
         return ApiResponse.<PageResponse<DepartmentResponse>>builder()
-                .result(departmentService.findAll(page))
+                .result(departmentService.findAll(keyword, page, size))
                 .build();
     }
 

@@ -46,9 +46,11 @@ public class PermissionController {
     @GetMapping
     @PreAuthorize("hasAuthority('VIEW_PERMISSIONS')")
     public ApiResponse<PageResponse<PermissionResponse>> findAll(
-            @RequestParam(value = "page", defaultValue = "1") int page) {
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size) {
         return ApiResponse.<PageResponse<PermissionResponse>>builder()
-                .result(permissionService.findAll(page))
+                .result(permissionService.findAll(keyword, page, size))
                 .build();
     }
 

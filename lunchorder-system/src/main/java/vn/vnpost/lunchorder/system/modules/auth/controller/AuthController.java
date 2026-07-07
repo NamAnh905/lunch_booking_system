@@ -1,12 +1,21 @@
 package vn.vnpost.lunchorder.system.modules.auth.controller;
 
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import vn.vnpost.lunchorder.common.base.ApiResponse;
+import vn.vnpost.lunchorder.common.exception.AppException;
+import vn.vnpost.lunchorder.common.exception.ErrorCode;
 import vn.vnpost.lunchorder.system.modules.auth.service.AuthService;
 import vn.vnpost.lunchorder.system.modules.auth.service.dto.IntrospectRequest;
 import vn.vnpost.lunchorder.system.modules.auth.service.dto.IntrospectResponse;
@@ -22,6 +31,9 @@ public class AuthController {
 
     private final AuthService authService;
 
+    @Value("${jwt.refreshable-duration}")
+    private long refreshableDuration;
+
     @PostMapping("/introspect")
     public ApiResponse<IntrospectResponse> introspect(@RequestBody @Valid IntrospectRequest request) {
         IntrospectResponse response = authService.introspect(request);
@@ -31,25 +43,89 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ApiResponse<TokenResponse> login(@RequestBody @Valid LoginRequest request) {
+    public ApiResponse<TokenResponse> login(
+            @RequestBody @Valid LoginRequest request,
+            HttpServletRequest httpServletRequest,
+            HttpServletResponse httpServletResponse) {
         TokenResponse response = authService.login(request);
+        setCookie(httpServletRequest, httpServletResponse, response.getToken(), refreshableDuration);
         return ApiResponse.<TokenResponse>builder()
                 .result(response)
                 .build();
     }
 
     @PostMapping("/logout")
-    public ApiResponse<Void> logout(@RequestBody @Valid LogoutRequest request) {
-        authService.logout(request);
+    public ApiResponse<Void> logout(
+            @RequestBody(required = false) LogoutRequest request,
+            HttpServletRequest httpServletRequest,
+            HttpServletResponse httpServletResponse) {
+        
+        String token = null;
+        if (request != null && StringUtils.hasText(request.getToken())) {
+            token = request.getToken();
+        } else {
+            token = getCookieValue(httpServletRequest, "token");
+        }
+
+        if (token != null) {
+            LogoutRequest serviceRequest = new LogoutRequest();
+            serviceRequest.setToken(token);
+            authService.logout(serviceRequest);
+        }
+
+        setCookie(httpServletRequest, httpServletResponse, null, 0);
+
         return ApiResponse.<Void>builder()
                 .build();
     }
 
     @PostMapping("/refresh")
-    public ApiResponse<TokenResponse> refresh(@RequestBody @Valid RefreshRequest request) {
-        TokenResponse response = authService.refreshToken(request);
+    public ApiResponse<TokenResponse> refresh(
+            @RequestBody(required = false) RefreshRequest request,
+            HttpServletRequest httpServletRequest,
+            HttpServletResponse httpServletResponse) {
+        
+        String token = null;
+        if (request != null && StringUtils.hasText(request.getToken())) {
+            token = request.getToken();
+        } else {
+            token = getCookieValue(httpServletRequest, "token");
+        }
+
+        if (!StringUtils.hasText(token)) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        RefreshRequest serviceRequest = new RefreshRequest();
+        serviceRequest.setToken(token);
+
+        TokenResponse response = authService.refreshToken(serviceRequest);
+        setCookie(httpServletRequest, httpServletResponse, response.getToken(), refreshableDuration);
+
         return ApiResponse.<TokenResponse>builder()
                 .result(response)
                 .build();
+    }
+
+    private void setCookie(HttpServletRequest request, HttpServletResponse response, String token, long maxAge) {
+        ResponseCookie cookie = ResponseCookie.from("token", token != null ? token : "")
+                .httpOnly(true)
+                .secure(request.isSecure())
+                .path("/")
+                .maxAge(token != null ? maxAge : 0)
+                .sameSite("Lax")
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    private String getCookieValue(HttpServletRequest request, String name) {
+        if (request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if (name.equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+        return null;
     }
 }

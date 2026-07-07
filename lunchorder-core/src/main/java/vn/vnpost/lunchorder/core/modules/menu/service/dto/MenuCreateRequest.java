@@ -15,10 +15,8 @@ public class MenuCreateRequest {
     @NotNull(message = "Ngày của thực đơn không được để trống.")
     private LocalDate menuDate;
 
-    @NotNull(message = "Giá suất ăn không được để trống.")
-    private BigDecimal price;
-
-    private Boolean isSpecial = false;
+    @NotNull(message = "Loại suất ăn không được để trống.")
+    private Long priceId;
 
     @NotBlank(message = "Trạng thái thực đơn không được để trống.")
     private String status;

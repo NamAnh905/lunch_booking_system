@@ -20,4 +20,7 @@ public class Department extends BaseEntity {
 
     @Column(name = "name")
     private String name;
+
+    @Transient
+    private Long userCount;
 }

@@ -14,7 +14,7 @@ public interface OrderMapper {
     @Mapping(target = "userId", source = "user.id")
     @Mapping(target = "menuId", source = "menu.id")
     @Mapping(target = "menuDate", source = "menu.menuDate")
-    @Mapping(target = "isSpecial", source = "menu.isSpecial")
+
     @Mapping(target = "originalUserId", source = "originalUser.id")
     OrderResponse toDto(Order order);
 

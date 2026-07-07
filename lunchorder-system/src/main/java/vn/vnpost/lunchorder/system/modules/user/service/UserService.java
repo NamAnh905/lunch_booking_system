@@ -16,7 +16,7 @@ public interface UserService {
 
     UserResponse findByUsername(String username);
 
-    PageResponse<UserResponse> findAll(int page);
+    PageResponse<UserResponse> findAll(int page, String keyword);
 
     List<UserResponse> search(String keyword);
 

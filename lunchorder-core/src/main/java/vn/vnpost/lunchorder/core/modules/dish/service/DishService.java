@@ -13,7 +13,7 @@ public interface DishService {
 
     void delete(Long id);
 
-    PageResponse<DishResponse> findAll(int page);
+    PageResponse<DishResponse> findAll(int page, int size, String keyword);
 
     List<DishResponse> search(String name);
 }

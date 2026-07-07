@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import vn.vnpost.lunchorder.common.base.BaseEntity;
+import vn.vnpost.lunchorder.common.enums.DishType;
 
 @Getter
 @Setter
@@ -23,4 +24,8 @@ public class Dish extends BaseEntity {
 
     @Column(name = "is_active")
     private Boolean isActive = true;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type")
+    private DishType type = DishType.REGULAR;
 }

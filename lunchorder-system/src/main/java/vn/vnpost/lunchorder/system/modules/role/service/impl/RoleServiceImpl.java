@@ -3,14 +3,10 @@ package vn.vnpost.lunchorder.system.modules.role.service.impl;
 import java.util.HashSet;
 import java.util.List;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
-import vn.vnpost.lunchorder.common.base.PageResponse;
 import vn.vnpost.lunchorder.common.entity.Permission;
 import vn.vnpost.lunchorder.common.entity.Role;
 import vn.vnpost.lunchorder.common.exception.AppException;
@@ -27,6 +23,7 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class RoleServiceImpl implements RoleService {
     private final RoleRepository roleRepository;
     private final RoleMapper roleMapper;
@@ -81,21 +78,14 @@ public class RoleServiceImpl implements RoleService {
     }
 
     @Override
-    public PageResponse<RoleResponse> findAll(int page) {
-        int pageSize = 10;
-        int pageNumber = Math.max(0, page - 1);
-        Pageable pageable = PageRequest.of(pageNumber, pageSize);
-
-        Page<Role> rolePage = roleRepository.findAll(pageable);
-        List<RoleResponse> dtoList = roleMapper.toDtoList(rolePage.getContent());
-
-        return PageResponse.<RoleResponse>builder()
-                .currentPage(page)
-                .totalPages(rolePage.getTotalPages())
-                .pageSize(pageSize)
-                .totalElements(rolePage.getTotalElements())
-                .data(dtoList)
-                .build();
+    public List<RoleResponse> findAll(String keyword) {
+        List<Role> roles;
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            roles = roleRepository.findByNameContainingIgnoreCaseOrCodeContainingIgnoreCase(keyword, keyword);
+        } else {
+            roles = roleRepository.findAll();
+        }
+        return roleMapper.toDtoList(roles);
     }
 
     @Override

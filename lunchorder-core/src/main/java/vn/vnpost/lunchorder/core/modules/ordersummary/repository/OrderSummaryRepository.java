@@ -19,8 +19,8 @@ public interface OrderSummaryRepository extends JpaRepository<Order, Long> {
      */
     @Query("""
         SELECT u.id, u.fullName, d.name,
-               SUM(CASE WHEN m.isSpecial = false THEN 1 ELSE 0 END),
-               SUM(CASE WHEN m.isSpecial = true THEN 1 ELSE 0 END),
+               SUM(CASE WHEN o.price <= 25000 THEN 1 ELSE 0 END),
+               SUM(CASE WHEN o.price > 25000 THEN 1 ELSE 0 END),
                SUM(o.price)
         FROM Order o
         JOIN o.user u
@@ -41,8 +41,8 @@ public interface OrderSummaryRepository extends JpaRepository<Order, Long> {
      */
     @Query("""
         SELECT u.id, u.fullName, d.name,
-               SUM(CASE WHEN m.isSpecial = false THEN 1 ELSE 0 END),
-               SUM(CASE WHEN m.isSpecial = true THEN 1 ELSE 0 END),
+               SUM(CASE WHEN o.price <= 25000 THEN 1 ELSE 0 END),
+               SUM(CASE WHEN o.price > 25000 THEN 1 ELSE 0 END),
                SUM(o.price)
         FROM Order o
         JOIN o.user u
@@ -64,7 +64,7 @@ public interface OrderSummaryRepository extends JpaRepository<Order, Long> {
      * Trả về danh sách: [userId, menuDate, isSpecial]
      */
     @Query("""
-        SELECT u.id, m.menuDate, m.isSpecial
+        SELECT u.id, m.menuDate, o.price
         FROM Order o
         JOIN o.user u
         JOIN o.menu m

@@ -15,5 +15,6 @@ import vn.vnpost.lunchorder.system.modules.permission.service.dto.PermissionResp
 public class RoleResponse extends BaseResponse {
     private String code;
     private String name;
+    private String description;
     private Set<PermissionResponse> permissions;
 }

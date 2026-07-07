@@ -15,5 +15,7 @@ public class RoleCreateRequest {
     @NotBlank(message = "Tên vai trò không được để trống.")
     private String name;
 
+    private String description;
+
     private Set<String> permissions;
 }

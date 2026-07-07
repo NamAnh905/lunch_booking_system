@@ -22,6 +22,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentRepository paymentRepository;
@@ -59,7 +60,6 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<PaymentResponse> getPayments(Long userId, Integer month, Integer year) {
         List<Payment> payments = paymentRepository.findByFilters(userId, month, year);
         return paymentMapper.toDtoList(payments);

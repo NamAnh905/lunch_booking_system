@@ -16,7 +16,11 @@ public class TicketExchangeResponse {
     private String sellerName;
     private Long sellerId;
     private LocalDate menuDate;
-    private Boolean isSpecial;
+    private java.math.BigDecimal price;
+
+    public Boolean getIsSpecial() {
+        return price != null && price.compareTo(new java.math.BigDecimal("25000")) > 0;
+    }
     private String status;
     private Instant createdAt;
     private Long buyerId;

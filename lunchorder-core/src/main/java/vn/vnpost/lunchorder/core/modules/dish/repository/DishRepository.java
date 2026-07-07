@@ -1,5 +1,7 @@
 package vn.vnpost.lunchorder.core.modules.dish.repository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import vn.vnpost.lunchorder.common.entity.Dish;
@@ -12,4 +14,6 @@ public interface DishRepository extends JpaRepository<Dish, Long> {
     Optional<Dish> findByName(String name);
 
     List<Dish> findByNameContainingIgnoreCase(String name);
+
+    Page<Dish> findByNameContainingIgnoreCase(String name, Pageable pageable);
 }

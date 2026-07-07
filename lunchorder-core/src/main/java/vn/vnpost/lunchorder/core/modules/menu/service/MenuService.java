@@ -14,7 +14,7 @@ public interface MenuService {
 
     void delete(Long id);
 
-    PageResponse<MenuResponse> findAll(int page);
+    PageResponse<MenuResponse> findAll(int page, int size, String keyword);
 
     MenuResponse findById(Long id);
 

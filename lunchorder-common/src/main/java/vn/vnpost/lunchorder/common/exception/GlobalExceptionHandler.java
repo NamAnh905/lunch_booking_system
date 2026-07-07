@@ -25,6 +25,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(value = Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleRuntimeException(Exception exception) {
+        if ("org.springframework.security.access.AccessDeniedException".equals(exception.getClass().getName()) ||
+            "org.springframework.security.authorization.AuthorizationDeniedException".equals(exception.getClass().getName())) {
+            log.error("Access denied: ", exception);
+            return buildResponse(ErrorCode.UNAUTHORIZED);
+        }
         log.error("Uncaught exception: ", exception);
         return buildResponse(ErrorCode.UNCATEGORIZED_EXCEPTION);
     }
