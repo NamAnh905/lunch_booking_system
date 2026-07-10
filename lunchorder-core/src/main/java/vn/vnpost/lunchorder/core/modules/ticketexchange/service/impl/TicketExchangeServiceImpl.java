@@ -43,16 +43,12 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
     private final TicketExchangeMapper ticketExchangeMapper;
     private final NotificationService notificationService;
 
-    private boolean isCutOffReached(LocalDate menuDate) {
-        LocalDate today = LocalDate.now();
-        LocalDate cutoffDate = menuDate.minusDays(1);
-        if (today.isAfter(cutoffDate)) {
-            return true;
-        }
-        if (today.isEqual(cutoffDate)) {
-            return LocalTime.now().isAfter(getCutOffTime());
-        }
-        return false;
+    private boolean isValidExchangeTimeWindow(LocalDate menuDate) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalTime cutOffTime = getCutOffTime();
+        LocalDateTime cutOffStart = menuDate.minusDays(1).atTime(cutOffTime);
+        LocalDateTime cutOffEnd = menuDate.atTime(10, 30);
+        return !now.isBefore(cutOffStart) && !now.isAfter(cutOffEnd);
     }
 
     private LocalTime getCutOffTime() {
@@ -69,10 +65,10 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
     }
 
     @Override
-    public PageResponse<TicketExchangeResponse> getOpenExchanges(int page, int size) {
+    public PageResponse<TicketExchangeResponse> getOpenExchanges(int page, int size, String status, String keyword) {
         int pageNumber = Math.max(0, page - 1);
         Pageable pageable = PageRequest.of(pageNumber, size);
-        Page<TicketExchange> entityPage = ticketExchangeRepository.findByStatus(TicketExchangeStatus.OPEN.name(), pageable);
+        Page<TicketExchange> entityPage = ticketExchangeRepository.findForAdmin(null, null, status, keyword, pageable);
         List<TicketExchangeResponse> dtoList = entityPage.getContent().stream()
                 .map(ticketExchangeMapper::toDto)
                 .toList();
@@ -84,6 +80,14 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
                 .totalElements(entityPage.getTotalElements())
                 .data(dtoList)
                 .build();
+    }
+
+    @Override
+    public List<TicketExchangeResponse> getMyListedTickets(Long userId) {
+        List<TicketExchange> entityList = ticketExchangeRepository.findBySellerIdAndStatus(userId, TicketExchangeStatus.OPEN.name());
+        return entityList.stream()
+                .map(ticketExchangeMapper::toDto)
+                .toList();
     }
 
     @Override
@@ -109,17 +113,8 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
         }
 
         // Check time constraints
-        LocalDate menuDate = order.getMenu().getMenuDate();
-        LocalDate today = LocalDate.now();
-
-        // Rule 1: Cannot pass a ticket of a past menu date
-        if (menuDate.isBefore(today)) {
-            throw new AppException(ErrorCode.ORDER_CANNOT_PASS);
-        }
-
-        // Rule 2: Cannot pass if the menu date is still editable for
-        // ordering/cancelling
-        if (!isCutOffReached(menuDate)) {
+        LocalDate menuDate = order.getOrderDate();
+        if (!isValidExchangeTimeWindow(menuDate)) {
             throw new AppException(ErrorCode.ORDER_CANNOT_PASS);
         }
 
@@ -158,10 +153,24 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
         }
 
         // Check time constraints: Cannot withdraw a ticket for a past menu date
-        LocalDate menuDate = ticketExchange.getOrder().getMenu().getMenuDate();
+        LocalDate menuDate = ticketExchange.getOrder().getOrderDate();
         LocalDate today = LocalDate.now();
         if (menuDate.isBefore(today)) {
             throw new AppException(ErrorCode.ORDER_CUTOFF_REACHED);
+        }
+
+        ticketExchange.setStatus(TicketExchangeStatus.CANCELLED.name());
+        ticketExchangeRepository.save(ticketExchange);
+    }
+
+    @Override
+    @Transactional
+    public void forceCancelTicket(Long exchangeId) {
+        TicketExchange ticketExchange = ticketExchangeRepository.findByIdForUpdate(exchangeId)
+                .orElseThrow(() -> new AppException(ErrorCode.EXCHANGE_NOT_FOUND));
+
+        if (!TicketExchangeStatus.OPEN.name().equalsIgnoreCase(ticketExchange.getStatus())) {
+            throw new AppException(ErrorCode.EXCHANGE_NOT_OPEN);
         }
 
         ticketExchange.setStatus(TicketExchangeStatus.CANCELLED.name());
@@ -184,16 +193,15 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
         }
 
         // Check if buyer already has an active order for this menu date
-        LocalDate menuDate = ticketExchange.getOrder().getMenu().getMenuDate();
-        boolean hasActiveOrderOnSameDay = orderRepository.findByUserIdAndMenuMenuDateBetween(userId, menuDate, menuDate).stream()
+        LocalDate menuDate = ticketExchange.getOrder().getOrderDate();
+        boolean hasActiveOrderOnSameDay = orderRepository.findByUserIdAndOrderDateBetween(userId, menuDate, menuDate).stream()
                 .anyMatch(o -> !OrderStatus.CANCELLED.name().equalsIgnoreCase(o.getStatus()));
         if (hasActiveOrderOnSameDay) {
             throw new AppException(ErrorCode.ORDER_ALREADY_EXISTS);
         }
 
-        // Check time constraints: Cannot claim a ticket for a past menu date
-        LocalDate today = LocalDate.now();
-        if (menuDate.isBefore(today)) {
+        // Check time constraints: Must be within exchange time window
+        if (!isValidExchangeTimeWindow(menuDate)) {
             throw new AppException(ErrorCode.ORDER_CUTOFF_REACHED);
         }
 
@@ -213,7 +221,7 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
         // Update order
         Order order = ticketExchange.getOrder();
         order.setUser(buyer);
-        order.setStatus(OrderStatus.TRANSFERRED.name());
+        order.setStatus(OrderStatus.PENDING.name());
         orderRepository.save(order);
 
         // Send notifications
@@ -221,12 +229,12 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
             notificationService.sendNotificationToUser(
                     seller.getId(),
                     "Vé ăn trưa đã được chuyển nhượng",
-                    "Vé ăn trưa ngày " + order.getMenu().getMenuDate() + " của bạn đã được " + buyer.getFullName()
+                    "Vé ăn trưa ngày " + order.getOrderDate() + " của bạn đã được " + buyer.getFullName()
                             + " nhận thành công.");
             notificationService.sendNotificationToUser(
                     buyer.getId(),
                     "Nhận vé ăn trưa thành công",
-                    "Bạn đã nhận thành công vé ăn trưa ngày " + order.getMenu().getMenuDate() + " từ "
+                    "Bạn đã nhận thành công vé ăn trưa ngày " + order.getOrderDate() + " từ "
                             + seller.getFullName() + ".");
         } catch (Exception e) {
             log.error("Failed to send notification for ticket exchange claim", e);
@@ -236,15 +244,22 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
     }
 
     @Override
-    public List<TicketExchangeResponse> getAdminExchanges(LocalDate startDate, String status) {
-        Instant startInstant = startDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
-        List<TicketExchange> list;
-        if (status != null && !status.isEmpty()) {
-            list = ticketExchangeRepository.findByCreatedAtAfterAndStatus(startInstant, status.toUpperCase());
-        } else {
-            list = ticketExchangeRepository.findByCreatedAtAfter(startInstant);
-        }
-        return ticketExchangeMapper.toDtoList(list);
+    public PageResponse<TicketExchangeResponse> getAdminExchanges(int page, int size, LocalDate startDate, LocalDate endDate, String status, String keyword) {
+        int pageNumber = Math.max(0, page - 1);
+        Pageable pageable = PageRequest.of(pageNumber, size);
+        
+        Page<TicketExchange> entityPage = ticketExchangeRepository.findForAdmin(startDate, endDate, status, keyword, pageable);
+        List<TicketExchangeResponse> dtoList = entityPage.getContent().stream()
+                .map(ticketExchangeMapper::toDto)
+                .toList();
+
+        return PageResponse.<TicketExchangeResponse>builder()
+                .currentPage(page)
+                .totalPages(entityPage.getTotalPages())
+                .pageSize(size)
+                .totalElements(entityPage.getTotalElements())
+                .data(dtoList)
+                .build();
     }
 
 }

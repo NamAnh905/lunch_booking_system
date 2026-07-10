@@ -10,7 +10,7 @@ import java.time.LocalDate;
 
 @Getter
 @Setter
-@JsonIgnoreProperties(value = { "createdAt", "updatedAt", "createdBy", "updatedBy" })
+@JsonIgnoreProperties(value = { "updatedAt", "createdBy", "updatedBy" }, ignoreUnknown = true)
 public class OrderResponse extends BaseResponse {
     private Long userId;
     private Long menuId;
@@ -24,4 +24,10 @@ public class OrderResponse extends BaseResponse {
     private Long originalUserId;
     private Boolean isPrinted;
     private String errorMessage;
+    
+    // User Info added for UI
+    private String userName;
+    private String fullName;
+    private String roleName;
+    private String departmentName;
 }

@@ -11,7 +11,7 @@ import vn.vnpost.lunchorder.system.modules.permission.service.dto.PermissionResp
 
 @Getter
 @Setter
-@JsonIgnoreProperties(value = { "createdAt", "updatedAt", "createdBy", "updatedBy" })
+@JsonIgnoreProperties(value = { "createdAt", "updatedAt", "createdBy", "updatedBy" }, ignoreUnknown = true)
 public class RoleResponse extends BaseResponse {
     private String code;
     private String name;

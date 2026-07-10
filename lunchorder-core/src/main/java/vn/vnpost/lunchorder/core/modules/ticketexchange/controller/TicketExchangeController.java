@@ -12,6 +12,8 @@ import vn.vnpost.lunchorder.core.modules.ticketexchange.service.dto.TicketExchan
 import vn.vnpost.lunchorder.core.modules.ticketexchange.service.dto.TicketExchangeResponse;
 import vn.vnpost.lunchorder.system.security.jwt.UserPrincipal;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/tickets/market")
@@ -23,8 +25,10 @@ public class TicketExchangeController {
         @PreAuthorize("hasAuthority('EXCHANGE_TICKETS')")
         public ApiResponse<PageResponse<TicketExchangeResponse>> getMarketTickets(
                         @RequestParam(name = "page", defaultValue = "1") int page,
-                        @RequestParam(name = "size", defaultValue = "10") int size) {
-                PageResponse<TicketExchangeResponse> openExchanges = ticketExchangeService.getOpenExchanges(page, size);
+                        @RequestParam(name = "size", defaultValue = "10") int size,
+                        @RequestParam(name = "status", required = false) String status,
+                        @RequestParam(name = "keyword", required = false) String keyword) {
+                PageResponse<TicketExchangeResponse> openExchanges = ticketExchangeService.getOpenExchanges(page, size, status, keyword);
                 return ApiResponse.<PageResponse<TicketExchangeResponse>>builder()
                                 .result(openExchanges)
                                 .build();
@@ -62,6 +66,16 @@ public class TicketExchangeController {
                                 exchangeId);
                 return ApiResponse.<TicketExchangeResponse>builder()
                                 .result(response)
+                                .build();
+        }
+
+        @GetMapping("/my-tickets")
+        @PreAuthorize("hasAuthority('EXCHANGE_TICKETS')")
+        public ApiResponse<List<TicketExchangeResponse>> getMyListedTickets(
+                        @AuthenticationPrincipal UserPrincipal userPrincipal) {
+                List<TicketExchangeResponse> myList = ticketExchangeService.getMyListedTickets(userPrincipal.getUserId());
+                return ApiResponse.<List<TicketExchangeResponse>>builder()
+                                .result(myList)
                                 .build();
         }
 }

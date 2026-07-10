@@ -5,9 +5,8 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Set;
+import java.util.List;
 
 @Getter
 @Setter
@@ -21,5 +20,5 @@ public class MenuCreateRequest {
     @NotBlank(message = "Trạng thái thực đơn không được để trống.")
     private String status;
 
-    private Set<Long> dishIds;
+    private List<Long> dishIds;
 }

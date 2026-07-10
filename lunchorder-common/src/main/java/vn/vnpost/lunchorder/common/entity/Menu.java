@@ -6,7 +6,7 @@ import lombok.Setter;
 import vn.vnpost.lunchorder.common.base.BaseEntity;
 
 import java.time.LocalDate;
-import java.util.Set;
+import java.util.List;
 
 @Getter
 @Setter
@@ -31,5 +31,6 @@ public class Menu extends BaseEntity {
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "menu_dish", joinColumns = @JoinColumn(name = "menu_id"), inverseJoinColumns = @JoinColumn(name = "dish_id"))
-    private Set<Dish> dishes;
+    @OrderColumn(name = "display_order")
+    private List<Dish> dishes;
 }

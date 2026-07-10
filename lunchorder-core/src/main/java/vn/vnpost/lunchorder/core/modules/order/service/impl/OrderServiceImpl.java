@@ -69,46 +69,39 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public List<OrderResponse> getMyOrders(Long userId, LocalDate fromDate, LocalDate toDate) {
-        List<Order> orders = orderRepository.findByUserIdAndMenuMenuDateBetween(userId, fromDate, toDate);
+        List<Order> orders = orderRepository.findByUserIdAndOrderDateBetween(userId, fromDate, toDate);
         return orderMapper.toDtoList(orders);
     }
 
     @Override
     @Transactional
     public List<OrderResponse> createOrders(Long userId, OrderCreateRequest request) {
+        log.info("OrderService processing createOrders for user ID {}: payload = {}", userId, request.getOrderDates());
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         List<OrderResponse> responses = new ArrayList<>();
-        for (Long menuId : request.getMenuIds()) {
+        for (LocalDate orderDate : request.getOrderDates()) {
             try {
-                Menu menu = menuRepository.findById(menuId)
-                        .orElseThrow(() -> new AppException(ErrorCode.MENU_NOT_FOUND));
-
                 // Check time constraints (cutoff time is day before menu date)
-                if (isCutOffReached(menu.getMenuDate())) {
+                if (isCutOffReached(orderDate)) {
                     throw new AppException(ErrorCode.ORDER_CUTOFF_REACHED);
                 }
 
-                // Check if user already ordered a meal for this date (via menu)
-                Optional<Order> existingOrderOpt = orderRepository.findByUserIdAndMenuId(userId, menuId);
+                // Check if user already ordered a meal for this date
+                Optional<Order> existingOrderOpt = orderRepository.findByUserIdAndOrderDate(userId, orderDate);
                 if (existingOrderOpt.isPresent()) {
                     Order existingOrder = existingOrderOpt.get();
                     if (OrderStatus.CANCELLED.name().equalsIgnoreCase(existingOrder.getStatus())) {
-                        // Check if there is another active order on the same day
-                        final Long existingOrderId = existingOrder.getId();
-                        boolean hasActiveOrderOnSameDay = orderRepository
-                                .findByUserIdAndMenuMenuDateBetween(userId, menu.getMenuDate(), menu.getMenuDate())
-                                .stream()
-                                .anyMatch(o -> !OrderStatus.CANCELLED.name().equalsIgnoreCase(o.getStatus())
-                                        && !o.getId().equals(existingOrderId));
-                        if (hasActiveOrderOnSameDay) {
-                            throw new AppException(ErrorCode.ORDER_ALREADY_EXISTS);
-                        }
+                        List<Menu> menus = menuRepository.findByMenuDate(orderDate);
+                        Menu menu = menus.isEmpty() ? null : menus.get(0);
 
                         // Upsert: Reactivate the cancelled order instead of inserting a new record
                         existingOrder.setStatus(OrderStatus.PENDING.name());
-                        existingOrder.setPrice(menu.getPrice().getAmount());
+                        existingOrder.setMenu(menu);
+                        existingOrder.setPrice(
+                                menu != null ? menu.getPrice().getAmount() : java.math.BigDecimal.valueOf(25000));
                         existingOrder.setTicketSource(TicketSource.STANDARD.name());
                         existingOrder.setIsPrinted(false);
                         existingOrder.setOriginalUser(user);
@@ -120,18 +113,14 @@ public class OrderServiceImpl implements OrderService {
                     }
                 }
 
-                // Check if there is any active order for any menu on this day
-                boolean hasActiveOrderOnSameDay = orderRepository
-                        .findByUserIdAndMenuMenuDateBetween(userId, menu.getMenuDate(), menu.getMenuDate()).stream()
-                        .anyMatch(o -> !OrderStatus.CANCELLED.name().equalsIgnoreCase(o.getStatus()));
-                if (hasActiveOrderOnSameDay) {
-                    throw new AppException(ErrorCode.ORDER_ALREADY_EXISTS);
-                }
+                List<Menu> menus = menuRepository.findByMenuDate(orderDate);
+                Menu menu = menus.isEmpty() ? null : menus.get(0);
 
                 Order order = new Order();
                 order.setUser(user);
+                order.setOrderDate(orderDate);
                 order.setMenu(menu);
-                order.setPrice(menu.getPrice().getAmount());
+                order.setPrice(menu != null ? menu.getPrice().getAmount() : java.math.BigDecimal.valueOf(25000));
                 order.setStatus(OrderStatus.PENDING.name());
                 order.setTicketSource(TicketSource.STANDARD.name());
                 order.setOriginalUser(user);
@@ -141,19 +130,15 @@ public class OrderServiceImpl implements OrderService {
                 responses.add(orderMapper.toDto(order));
             } catch (AppException e) {
                 OrderResponse failedResponse = new OrderResponse();
-                failedResponse.setMenuId(menuId);
                 failedResponse.setStatus("FAILED");
                 failedResponse.setErrorMessage(e.getErrorCode().getMessage());
-                try {
-                    menuRepository.findById(menuId).ifPresent(m -> failedResponse.setMenuDate(m.getMenuDate()));
-                } catch (Exception ignored) {
-                }
+                failedResponse.setMenuDate(orderDate);
                 responses.add(failedResponse);
             } catch (Exception e) {
                 OrderResponse failedResponse = new OrderResponse();
-                failedResponse.setMenuId(menuId);
                 failedResponse.setStatus("FAILED");
                 failedResponse.setErrorMessage(e.getMessage() != null ? e.getMessage() : "Unknown error");
+                failedResponse.setMenuDate(orderDate);
                 responses.add(failedResponse);
             }
         }
@@ -180,7 +165,7 @@ public class OrderServiceImpl implements OrderService {
         }
 
         // Check time constraints (cutoff time is day before menu date)
-        if (isCutOffReached(order.getMenu().getMenuDate())) {
+        if (isCutOffReached(order.getOrderDate())) {
             throw new AppException(ErrorCode.ORDER_CUTOFF_REACHED);
         }
 
@@ -208,8 +193,8 @@ public class OrderServiceImpl implements OrderService {
         User targetUser = userRepository.findById(request.getTargetUserId())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        // Check if target user already ordered a meal for this date (via menu)
-        if (orderRepository.findByUserIdAndMenuId(request.getTargetUserId(), order.getMenu().getId()).isPresent()) {
+        // Check if target user already ordered a meal for this date
+        if (orderRepository.findByUserIdAndOrderDate(request.getTargetUserId(), order.getOrderDate()).isPresent()) {
             throw new AppException(ErrorCode.ORDER_ALREADY_EXISTS);
         }
 

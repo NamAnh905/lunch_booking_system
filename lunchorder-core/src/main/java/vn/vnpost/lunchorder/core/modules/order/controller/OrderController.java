@@ -2,6 +2,8 @@ package vn.vnpost.lunchorder.core.modules.order.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -17,39 +19,42 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
+@Slf4j
 @RequestMapping("/orders")
 public class OrderController {
 
-    private final OrderService orderService;
+        private final OrderService orderService;
 
-    @GetMapping("/me")
-    @PreAuthorize("hasAuthority('CREATE_OWN_ORDER')")
-    public ApiResponse<List<OrderResponse>> getMyOrders(
-            @AuthenticationPrincipal UserPrincipal userPrincipal,
-            @RequestParam("fromDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
-            @RequestParam("toDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate) {
-        return ApiResponse.<List<OrderResponse>>builder()
-                .result(orderService.getMyOrders(userPrincipal.getUserId(), fromDate, toDate))
-                .build();
-    }
+        @GetMapping("/me")
+        @PreAuthorize("hasAuthority('CREATE_OWN_ORDER')")
+        public ApiResponse<List<OrderResponse>> getMyOrders(
+                        @AuthenticationPrincipal UserPrincipal userPrincipal,
+                        @RequestParam("fromDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+                        @RequestParam("toDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate) {
+                return ApiResponse.<List<OrderResponse>>builder()
+                                .result(orderService.getMyOrders(userPrincipal.getUserId(), fromDate, toDate))
+                                .build();
+        }
 
-    @PostMapping
-    @PreAuthorize("hasAuthority('CREATE_OWN_ORDER')")
-    public ApiResponse<List<OrderResponse>> create(
-            @AuthenticationPrincipal UserPrincipal userPrincipal,
-            @RequestBody @Valid OrderCreateRequest request) {
-        return ApiResponse.<List<OrderResponse>>builder()
-                .result(orderService.createOrders(userPrincipal.getUserId(), request))
-                .build();
-    }
+        @PostMapping
+        @PreAuthorize("hasAuthority('CREATE_OWN_ORDER')")
+        public ApiResponse<List<OrderResponse>> create(
+                        @AuthenticationPrincipal UserPrincipal userPrincipal,
+                        @RequestBody @Valid OrderCreateRequest request) {
+                log.info("Received request to create orders for user ID {}: orderDates = {}", userPrincipal.getUserId(),
+                                request.getOrderDates());
+                return ApiResponse.<List<OrderResponse>>builder()
+                                .result(orderService.createOrders(userPrincipal.getUserId(), request))
+                                .build();
+        }
 
-    @PutMapping("/{id}/cancel")
-    @PreAuthorize("hasAuthority('CREATE_OWN_ORDER')")
-    public ApiResponse<OrderResponse> cancel(
-            @AuthenticationPrincipal UserPrincipal userPrincipal,
-            @PathVariable Long id) {
-        return ApiResponse.<OrderResponse>builder()
-                .result(orderService.cancelOrder(userPrincipal.getUserId(), id))
-                .build();
-    }
+        @PutMapping("/{id}/cancel")
+        @PreAuthorize("hasAuthority('CREATE_OWN_ORDER')")
+        public ApiResponse<OrderResponse> cancel(
+                        @AuthenticationPrincipal UserPrincipal userPrincipal,
+                        @PathVariable Long id) {
+                return ApiResponse.<OrderResponse>builder()
+                                .result(orderService.cancelOrder(userPrincipal.getUserId(), id))
+                                .build();
+        }
 }

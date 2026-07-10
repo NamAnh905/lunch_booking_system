@@ -7,7 +7,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import vn.vnpost.lunchorder.common.entity.User;
 
-public interface UserRepository extends JpaRepository<User, Long> {
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+
+public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificationExecutor<User> {
 
     Optional<User> findById(Long id);
 

@@ -10,13 +10,14 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 
 @Getter
 @Setter
 @Entity
 @Table(
     name = "\"order\"",
-    uniqueConstraints = @UniqueConstraint(name = "unique_user_menu", columnNames = {"user_id", "menu_id"})
+    uniqueConstraints = @UniqueConstraint(name = "unique_user_order_date", columnNames = {"user_id", "order_date"})
 )
 @EntityListeners(AuditingEntityListener.class)
 public class Order {
@@ -32,6 +33,9 @@ public class Order {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "menu_id")
     private Menu menu;
+
+    @Column(name = "order_date")
+    private LocalDate orderDate;
 
     @Column(name = "price", precision = 10, scale = 2)
     private BigDecimal price;

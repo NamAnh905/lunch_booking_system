@@ -5,6 +5,8 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +31,7 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "permissions", allEntries = true)
     public PermissionResponse create(PermissionCreateRequest request) {
         if (permissionRepository.findByAction(request.getAction()).isPresent()) {
             throw new AppException(ErrorCode.INVALID_KEY);
@@ -40,6 +43,7 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "permissions", allEntries = true)
     public PermissionResponse update(Long id, PermissionUpdateRequest request) {
         Permission permission = permissionRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.PERMISSION_NOT_FOUND));
@@ -51,6 +55,7 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "permissions", allEntries = true)
     public void delete(Long id) {
         Permission permission = permissionRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.PERMISSION_NOT_FOUND));
@@ -58,6 +63,7 @@ public class PermissionServiceImpl implements PermissionService {
     }
 
     @Override
+    @Cacheable(value = "permissions")
     public PermissionResponse findByAction(String action) {
         Permission permission = permissionRepository.findByAction(action)
                 .orElseThrow(() -> new AppException(ErrorCode.PERMISSION_NOT_FOUND));
@@ -65,6 +71,7 @@ public class PermissionServiceImpl implements PermissionService {
     }
 
     @Override
+    @Cacheable(value = "permissions")
     public PageResponse<PermissionResponse> findAll(String keyword, int page, int size) {
         int pageNumber = Math.max(0, page - 1);
         Pageable pageable = PageRequest.of(pageNumber, size);

@@ -7,6 +7,9 @@ import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,6 +45,7 @@ public class DepartmentServiceImpl implements DepartmentService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "departments", allEntries = true)
     public DepartmentResponse create(DepartmentCreateRequest request) {
         if (departmentRepository.findByCode(request.getCode()).isPresent()) {
             throw new AppException(ErrorCode.INVALID_KEY);
@@ -53,6 +57,7 @@ public class DepartmentServiceImpl implements DepartmentService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "departments", allEntries = true)
     public DepartmentResponse update(Long id, DepartmentUpdateRequest request) {
         Department department = departmentRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.DEPARTMENT_NOT_FOUND));
@@ -64,6 +69,7 @@ public class DepartmentServiceImpl implements DepartmentService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "departments", allEntries = true)
     public void delete(Long id) {
         Department department = departmentRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.DEPARTMENT_NOT_FOUND));
@@ -71,6 +77,7 @@ public class DepartmentServiceImpl implements DepartmentService {
     }
 
     @Override
+    @Cacheable(value = "departments", key = "'findByCode:' + #code")
     public DepartmentResponse findByCode(String code) {
         Department department = departmentRepository.findByCode(code)
                 .orElseThrow(() -> new AppException(ErrorCode.DEPARTMENT_NOT_FOUND));
@@ -78,6 +85,7 @@ public class DepartmentServiceImpl implements DepartmentService {
     }
 
     @Override
+    @Cacheable(value = "departments", key = "'search:' + #keyword")
     public List<DepartmentResponse> search(String keyword) {
         List<Department> departments = departmentRepository.findByCodeContainingIgnoreCaseOrNameContainingIgnoreCase(keyword, keyword);
         populateUserCounts(departments);
@@ -85,9 +93,10 @@ public class DepartmentServiceImpl implements DepartmentService {
     }
 
     @Override
+    @Cacheable(value = "departments", key = "'findAll:' + #keyword + ':' + #page + ':' + #size")
     public PageResponse<DepartmentResponse> findAll(String keyword, int page, int size) {
         int pageNumber = Math.max(0, page - 1);
-        Pageable pageable = PageRequest.of(pageNumber, size);
+        Pageable pageable = PageRequest.of(pageNumber, size, Sort.by(Sort.Direction.DESC, "id"));
 
         Page<Department> departmentPage;
         if (keyword != null && !keyword.trim().isEmpty()) {

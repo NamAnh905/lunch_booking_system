@@ -3,5 +3,8 @@ package vn.vnpost.lunchorder.common.enums;
 public enum DishType {
     REGULAR,
     SPECIAL,
-    DRINK
+    DRINK,
+    VEGETABLE,
+    RICE,
+    SOUP
 }

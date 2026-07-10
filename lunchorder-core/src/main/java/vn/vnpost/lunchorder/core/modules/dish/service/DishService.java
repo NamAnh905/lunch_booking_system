@@ -13,7 +13,9 @@ public interface DishService {
 
     void delete(Long id);
 
-    PageResponse<DishResponse> findAll(int page, int size, String keyword);
+    PageResponse<DishResponse> findAll(int page, int size, String keyword, List<String> types, List<Boolean> isActives);
 
     List<DishResponse> search(String name);
+
+    List<DishResponse> export(String keyword);
 }

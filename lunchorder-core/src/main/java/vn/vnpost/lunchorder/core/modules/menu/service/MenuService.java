@@ -19,4 +19,8 @@ public interface MenuService {
     MenuResponse findById(Long id);
 
     List<MenuResponse> findByDate(LocalDate date);
+
+    List<MenuResponse> findByDateRange(LocalDate startDate, LocalDate endDate);
+
+    List<MenuResponse> export(String keyword);
 }

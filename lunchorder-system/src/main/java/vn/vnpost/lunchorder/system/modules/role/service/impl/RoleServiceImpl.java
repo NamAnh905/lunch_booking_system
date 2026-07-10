@@ -3,6 +3,9 @@ package vn.vnpost.lunchorder.system.modules.role.service.impl;
 import java.util.HashSet;
 import java.util.List;
 
+import org.springframework.data.domain.Sort;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,7 +34,11 @@ public class RoleServiceImpl implements RoleService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "roles", allEntries = true)
     public RoleResponse create(RoleCreateRequest request) {
+        if (roleRepository.findByCode(request.getCode()).isPresent()) {
+            throw new AppException(ErrorCode.ROLE_ALREADY_EXISTS);
+        }
         Role role = roleMapper.toEntity(request);
 
         if (request.getPermissions() != null && !request.getPermissions().isEmpty()) {
@@ -45,6 +52,7 @@ public class RoleServiceImpl implements RoleService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "roles", allEntries = true)
     public RoleResponse update(Long id, RoleUpdateRequest request) {
         Role role = roleRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
@@ -64,6 +72,7 @@ public class RoleServiceImpl implements RoleService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "roles", allEntries = true)
     public void delete(Long id) {
         Role role = roleRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
@@ -71,6 +80,7 @@ public class RoleServiceImpl implements RoleService {
     }
 
     @Override
+    @Cacheable(value = "roles")
     public RoleResponse findByCode(String code) {
         Role role = roleRepository.findByCode(code)
                 .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
@@ -78,18 +88,21 @@ public class RoleServiceImpl implements RoleService {
     }
 
     @Override
+    @Cacheable(value = "roles")
     public List<RoleResponse> findAll(String keyword) {
         List<Role> roles;
+        Sort sort = Sort.by(Sort.Direction.DESC, "id");
         if (keyword != null && !keyword.trim().isEmpty()) {
-            roles = roleRepository.findByNameContainingIgnoreCaseOrCodeContainingIgnoreCase(keyword, keyword);
+            roles = roleRepository.findByNameContainingIgnoreCaseOrCodeContainingIgnoreCase(keyword, keyword, sort);
         } else {
-            roles = roleRepository.findAll();
+            roles = roleRepository.findAll(sort);
         }
         return roleMapper.toDtoList(roles);
     }
 
     @Override
     @Transactional
+    @CacheEvict(value = "roles", allEntries = true)
     public void assignPermissions(Long roleId, Set<String> permissionCodes) {
         Role role = roleRepository.findById(roleId)
                 .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));

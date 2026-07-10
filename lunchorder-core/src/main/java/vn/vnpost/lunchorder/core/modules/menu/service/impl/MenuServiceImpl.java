@@ -5,6 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.vnpost.lunchorder.common.base.PageResponse;
@@ -23,9 +26,12 @@ import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuUpdateRequest;
 import vn.vnpost.lunchorder.core.modules.menu.service.mapstruct.MenuMapper;
 
 import java.time.LocalDate;
-import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -40,6 +46,7 @@ public class MenuServiceImpl implements MenuService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "menus", allEntries = true)
     public MenuResponse create(MenuCreateRequest request) {
         if (menuRepository.findByMenuDateAndPriceId(request.getMenuDate(), request.getPriceId()).isPresent()) {
             throw new AppException(ErrorCode.MENU_ALREADY_EXISTS);
@@ -52,8 +59,15 @@ public class MenuServiceImpl implements MenuService {
         menu.setPrice(price);
 
         if (request.getDishIds() != null && !request.getDishIds().isEmpty()) {
-            List<Dish> dishes = dishRepository.findAllById(request.getDishIds());
-            menu.setDishes(new HashSet<>(dishes));
+            List<Dish> fetchedDishes = dishRepository.findAllById(request.getDishIds());
+            Map<Long, Dish> dishMap = fetchedDishes.stream().collect(Collectors.toMap(Dish::getId, d -> d));
+            List<Dish> orderedDishes = request.getDishIds().stream()
+                    .map(dishMap::get)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+            menu.setDishes(orderedDishes);
+        } else {
+            menu.setDishes(new ArrayList<>());
         }
 
         menu = menuRepository.save(menu);
@@ -62,11 +76,13 @@ public class MenuServiceImpl implements MenuService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "menus", allEntries = true)
     public MenuResponse update(Long id, MenuUpdateRequest request) {
         Menu menu = menuRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.MENU_NOT_FOUND));
 
-        Optional<Menu> existingMenuOpt = menuRepository.findByMenuDateAndPriceId(request.getMenuDate(), request.getPriceId());
+        Optional<Menu> existingMenuOpt = menuRepository.findByMenuDateAndPriceId(request.getMenuDate(),
+                request.getPriceId());
         if (existingMenuOpt.isPresent() && !existingMenuOpt.get().getId().equals(id)) {
             throw new AppException(ErrorCode.MENU_ALREADY_EXISTS);
         }
@@ -77,11 +93,16 @@ public class MenuServiceImpl implements MenuService {
         menuMapper.update(request, menu);
         menu.setPrice(price);
 
-        if (request.getDishIds() != null) {
-            List<Dish> dishes = dishRepository.findAllById(request.getDishIds());
-            menu.setDishes(new HashSet<>(dishes));
+        if (request.getDishIds() != null && !request.getDishIds().isEmpty()) {
+            List<Dish> fetchedDishes = dishRepository.findAllById(request.getDishIds());
+            Map<Long, Dish> dishMap = fetchedDishes.stream().collect(Collectors.toMap(Dish::getId, d -> d));
+            List<Dish> orderedDishes = request.getDishIds().stream()
+                    .map(dishMap::get)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+            menu.setDishes(orderedDishes);
         } else {
-            menu.setDishes(new HashSet<>());
+            menu.setDishes(new ArrayList<>());
         }
 
         menu = menuRepository.save(menu);
@@ -90,6 +111,7 @@ public class MenuServiceImpl implements MenuService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "menus", allEntries = true)
     public void delete(Long id) {
         Menu menu = menuRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.MENU_NOT_FOUND));
@@ -97,9 +119,10 @@ public class MenuServiceImpl implements MenuService {
     }
 
     @Override
+    @Cacheable(value = "menus")
     public PageResponse<MenuResponse> findAll(int page, int size, String keyword) {
         int pageNumber = Math.max(0, page - 1);
-        Pageable pageable = PageRequest.of(pageNumber, size);
+        Pageable pageable = PageRequest.of(pageNumber, size, Sort.by(Sort.Direction.ASC, "id"));
 
         Page<Menu> menuPage = menuRepository.searchMenus(keyword, pageable);
         List<MenuResponse> dtoList = menuMapper.toDtoList(menuPage.getContent());
@@ -121,11 +144,26 @@ public class MenuServiceImpl implements MenuService {
     }
 
     @Override
+    @Cacheable(value = "menus")
     public List<MenuResponse> findByDate(LocalDate date) {
         List<Menu> menus = menuRepository.findByMenuDate(date);
         if (menus.isEmpty()) {
             throw new AppException(ErrorCode.MENU_NOT_FOUND);
         }
+        return menuMapper.toDtoList(menus);
+    }
+
+    @Override
+    @Cacheable(value = "menus")
+    public List<MenuResponse> findByDateRange(LocalDate startDate, LocalDate endDate) {
+        List<Menu> menus = menuRepository.findByMenuDateBetween(startDate, endDate);
+        return menuMapper.toDtoList(menus);
+    }
+
+    @Override
+    public List<MenuResponse> export(String keyword) {
+        Sort sort = Sort.by(Sort.Direction.ASC, "id");
+        List<Menu> menus = menuRepository.searchMenusList(keyword, sort);
         return menuMapper.toDtoList(menus);
     }
 }

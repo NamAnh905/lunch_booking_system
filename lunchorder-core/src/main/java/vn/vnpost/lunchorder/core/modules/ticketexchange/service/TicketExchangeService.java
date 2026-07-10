@@ -8,9 +8,18 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface TicketExchangeService {
-    PageResponse<TicketExchangeResponse> getOpenExchanges(int page, int size);
+    PageResponse<TicketExchangeResponse> getOpenExchanges(int page, int size, String status, String keyword);
+
+    List<TicketExchangeResponse> getMyListedTickets(Long userId);
+
     TicketExchangeResponse postTicketToMarket(Long userId, TicketExchangeCreateRequest request);
+
     void withdrawTicketFromMarket(Long userId, Long exchangeId);
+
     TicketExchangeResponse claimTicket(Long userId, Long exchangeId);
-    List<TicketExchangeResponse> getAdminExchanges(LocalDate startDate, String status);
+
+    void forceCancelTicket(Long exchangeId);
+
+    PageResponse<TicketExchangeResponse> getAdminExchanges(int page, int size, LocalDate startDate, LocalDate endDate,
+            String status, String keyword);
 }

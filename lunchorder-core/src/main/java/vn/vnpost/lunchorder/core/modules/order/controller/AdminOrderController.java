@@ -59,4 +59,15 @@ public class AdminOrderController {
                 .result(orderService.updateOrderStatus(id, request))
                 .build();
     }
+
+    @GetMapping("/user/{userId}")
+    @PreAuthorize("hasAuthority('VIEW_REPORTS')")
+    public ApiResponse<java.util.List<OrderResponse>> getUserOrdersInPeriod(
+            @PathVariable Long userId,
+            @RequestParam("fromDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+            @RequestParam("toDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate) {
+        return ApiResponse.<java.util.List<OrderResponse>>builder()
+                .result(orderService.getMyOrders(userId, fromDate, toDate))
+                .build();
+    }
 }

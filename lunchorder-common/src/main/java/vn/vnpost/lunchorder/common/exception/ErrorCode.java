@@ -24,6 +24,7 @@ public enum ErrorCode {
 
     // 3xxx: Role & Permission
     ROLE_NOT_FOUND(3001, "Role not found", HttpStatus.NOT_FOUND),
+    ROLE_ALREADY_EXISTS(3002, "Role already exists", HttpStatus.BAD_REQUEST),
     PERMISSION_NOT_FOUND(3501, "Permission not found", HttpStatus.NOT_FOUND),
 
     // 4xxx: Department Management
@@ -31,6 +32,8 @@ public enum ErrorCode {
 
     // 5xxx: Dish Management
     DISH_NOT_FOUND(5001, "Dish not found", HttpStatus.NOT_FOUND),
+    DISH_ALREADY_EXISTS(5002, "Dish already exists", HttpStatus.BAD_REQUEST),
+    DISH_OUT_OF_STOCK(5003, "Dish is out of stock", HttpStatus.BAD_REQUEST),
 
     // 6xxx: Menu Management
     MENU_NOT_FOUND(6001, "Menu not found", HttpStatus.NOT_FOUND),
@@ -66,6 +69,7 @@ public enum ErrorCode {
 
     // 13xxx: Price Management
     PRICE_NOT_FOUND(13001, "Price not found", HttpStatus.NOT_FOUND),
+    PRICE_ALREADY_EXISTS(13002, "Price already exists", HttpStatus.BAD_REQUEST),
     ;
 
     private final int code;

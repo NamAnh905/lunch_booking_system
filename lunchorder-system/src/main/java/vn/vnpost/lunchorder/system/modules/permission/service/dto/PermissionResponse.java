@@ -8,7 +8,7 @@ import vn.vnpost.lunchorder.common.base.BaseResponse;
 
 @Getter
 @Setter
-@JsonIgnoreProperties(value = { "createdAt", "updatedAt", "createdBy", "updatedBy" })
+@JsonIgnoreProperties(value = { "createdAt", "updatedAt", "createdBy", "updatedBy" }, ignoreUnknown = true)
 public class PermissionResponse extends BaseResponse {
     private String action;
     private String description;

@@ -15,11 +15,19 @@ import vn.vnpost.lunchorder.core.modules.dish.service.dto.DishCreateRequest;
 import vn.vnpost.lunchorder.core.modules.dish.service.dto.DishResponse;
 import vn.vnpost.lunchorder.core.modules.dish.service.dto.DishUpdateRequest;
 
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import vn.vnpost.lunchorder.system.modules.excel.service.ExcelExportService;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/dishes")
 public class DishController {
     private final DishService dishService;
+    private final ExcelExportService excelExportService;
 
     @PostMapping
     @PreAuthorize("hasAuthority('MANAGE_DISHES')")
@@ -50,10 +58,30 @@ public class DishController {
     public ApiResponse<PageResponse<DishResponse>> findAll(
             @RequestParam(value = "page", defaultValue = "1") int page,
             @RequestParam(value = "size", defaultValue = "10") int size,
-            @RequestParam(value = "keyword", required = false) String keyword) {
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "types", required = false) List<String> types,
+            @RequestParam(value = "isActives", required = false) List<Boolean> isActives) {
         return ApiResponse.<PageResponse<DishResponse>>builder()
-                .result(dishService.findAll(page, size, keyword))
+                .result(dishService.findAll(page, size, keyword, types, isActives))
                 .build();
+    }
+
+    @GetMapping("/export")
+    @PreAuthorize("hasAuthority('VIEW_DISHES')")
+    public ResponseEntity<byte[]> export(
+            @RequestParam(value = "keyword", required = false) String keyword) {
+        try {
+            List<DishResponse> list = dishService.export(keyword);
+            ByteArrayInputStream in = excelExportService.exportToExcel(list, "Danh sách món ăn");
+            byte[] excelData = in.readAllBytes();
+            String filename = "danh_sach_mon_an.xlsx";
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                    .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                    .body(excelData);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to export Excel", e);
+        }
     }
 
     @GetMapping("/search")

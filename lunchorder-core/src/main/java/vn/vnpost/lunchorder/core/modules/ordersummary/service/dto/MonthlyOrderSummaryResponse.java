@@ -19,4 +19,5 @@ public class MonthlyOrderSummaryResponse {
     private BigDecimal totalPaid;
     private BigDecimal totalRemaining;
     private List<OrderSummaryItemResponse> items;
+    private List<DailyMealCountResponse> dailyCounts;
 }

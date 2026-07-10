@@ -16,9 +16,11 @@ public interface UserService {
 
     UserResponse findByUsername(String username);
 
-    PageResponse<UserResponse> findAll(int page, String keyword);
+    PageResponse<UserResponse> findAll(int page, int size, String keyword, List<Long> departmentIds, List<Boolean> isActives);
 
     List<UserResponse> search(String keyword);
+
+    List<UserResponse> export(String keyword);
 
     void assignRoles(Long userId, Set<String> roleCodes);
 }
