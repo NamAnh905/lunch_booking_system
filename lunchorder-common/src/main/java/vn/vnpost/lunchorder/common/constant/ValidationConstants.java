@@ -18,7 +18,7 @@ public final class ValidationConstants {
      * Chữ cái (bao gồm ký tự tiếng Việt) và khoảng trắng; không cho phép số,
      * ký tự đặc biệt (dùng cho họ tên người).
      */
-    public static final String REGEX_PERSON_NAME = "^[a-zA-ZÀ-ỹ\\s]+$";
+    public static final String REGEX_PERSON_NAME = "^[a-zA-ZÀ-ỹ\\s()]+$";
 
     /**
      * Chữ cái (bao gồm ký tự tiếng Việt), chữ số và khoảng trắng; không cho phép

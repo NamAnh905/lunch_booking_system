@@ -171,6 +171,7 @@ public class AuthServiceImpl implements AuthService {
                         Instant.now().plus(VALID_DURATION, ChronoUnit.SECONDS).toEpochMilli()))
                 .jwtID(UUID.randomUUID().toString())
                 .claim("userId", user.getId())
+                .claim("fullName", user.getFullName())
                 .claim("scope", buildScope(user))
                 .claim("refreshExpiry", refreshExpiry.toEpochMilli())
                 .build();

@@ -51,11 +51,6 @@ public enum ErrorCode {
     ORDER_IN_MARKET(7005, "Order is currently listed in the market", HttpStatus.BAD_REQUEST),
     ORDER_CANNOT_PASS(7006, "Order cannot be passed", HttpStatus.BAD_REQUEST),
 
-    // 8xxx: Feedback
-    FEEDBACK_NOT_FOUND(8001, "Feedback not found", HttpStatus.NOT_FOUND),
-    FEEDBACK_CANNOT_CREATE(8002, "You must order this meal before giving feedback", HttpStatus.BAD_REQUEST),
-    FEEDBACK_ALREADY_EXISTS(8003, "You have already submitted feedback for this menu", HttpStatus.BAD_REQUEST),
-
     // 9xxx: Ticket Management
     TICKET_NOT_FOUND(9001, "Ticket not found", HttpStatus.NOT_FOUND),
 

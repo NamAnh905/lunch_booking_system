@@ -12,7 +12,6 @@ import vn.vnpost.lunchorder.common.constant.ValidationConstants;
 public class DepartmentCreateRequest {
     @NotBlank(message = "Mã phòng ban không được để trống.")
     @Size(max = 50, message = "Mã phòng ban không được vượt quá 50 ký tự.")
-    @Pattern(regexp = ValidationConstants.REGEX_CODE, message = "Mã phòng ban chỉ được chứa chữ in hoa và dấu gạch dưới.")
     private String code;
 
     @NotBlank(message = "Tên phòng ban không được để trống.")

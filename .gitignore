@@ -45,3 +45,7 @@ Thumbs.db
 *local.yml
 *local.properties
 application-local.yml
+
+# Database
+sql/dump*.sql
+sql/db_*.sql
