@@ -1,4 +1,4 @@
-package vn.vnpost.lunchorder.core.modules.email;
+package vn.vnpost.lunchorder.tools.mail;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;

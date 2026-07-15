@@ -14,6 +14,7 @@ public enum ErrorCode {
     // 1xxx: Authentication & Authorization
     UNAUTHENTICATED(1001, "Unauthenticated", HttpStatus.UNAUTHORIZED),
     UNAUTHORIZED(1002, "Unauthorized access", HttpStatus.FORBIDDEN),
+    TOKEN_GENERATION_FAILED(1003, "Unable to generate authentication token", HttpStatus.INTERNAL_SERVER_ERROR),
 
     // 2xxx: User Management
     USER_NOT_FOUND(2001, "User not found", HttpStatus.NOT_FOUND),
@@ -21,14 +22,17 @@ public enum ErrorCode {
     USER_USERNAME_EXISTS(2003, "Username already exists", HttpStatus.BAD_REQUEST),
     USER_EMAIL_EXISTS(2004, "Email already exists", HttpStatus.BAD_REQUEST),
     USER_EMPLOYEE_CODE_EXISTS(2005, "Employee code already exists", HttpStatus.BAD_REQUEST),
+    INVALID_PASSWORD(2006, "Current password is incorrect", HttpStatus.BAD_REQUEST),
 
     // 3xxx: Role & Permission
     ROLE_NOT_FOUND(3001, "Role not found", HttpStatus.NOT_FOUND),
     ROLE_ALREADY_EXISTS(3002, "Role already exists", HttpStatus.BAD_REQUEST),
     PERMISSION_NOT_FOUND(3501, "Permission not found", HttpStatus.NOT_FOUND),
+    PERMISSION_ALREADY_EXISTS(3502, "Permission already exists", HttpStatus.BAD_REQUEST),
 
     // 4xxx: Department Management
     DEPARTMENT_NOT_FOUND(4001, "Department not found", HttpStatus.NOT_FOUND),
+    DEPARTMENT_CODE_EXISTS(4002, "Department code already exists", HttpStatus.BAD_REQUEST),
 
     // 5xxx: Dish Management
     DISH_NOT_FOUND(5001, "Dish not found", HttpStatus.NOT_FOUND),
@@ -70,6 +74,14 @@ public enum ErrorCode {
     // 13xxx: Price Management
     PRICE_NOT_FOUND(13001, "Price not found", HttpStatus.NOT_FOUND),
     PRICE_ALREADY_EXISTS(13002, "Price already exists", HttpStatus.BAD_REQUEST),
+
+    // 14xxx: System Configuration
+    ADMIN_REPORT_EMAIL_NOT_CONFIGURED(14001, "Admin report email is not configured in system settings", HttpStatus.INTERNAL_SERVER_ERROR),
+    EXPORT_FAILED(14002, "Failed to export data to Excel", HttpStatus.INTERNAL_SERVER_ERROR),
+
+    // 15xxx: File / Image Storage
+    IMAGE_INVALID(15001, "Image file is empty or invalid", HttpStatus.BAD_REQUEST),
+    IMAGE_UPLOAD_FAILED(15002, "Failed to upload image", HttpStatus.INTERNAL_SERVER_ERROR),
     ;
 
     private final int code;

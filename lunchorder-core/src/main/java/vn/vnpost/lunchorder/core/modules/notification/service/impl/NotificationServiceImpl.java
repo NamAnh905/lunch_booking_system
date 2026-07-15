@@ -3,6 +3,7 @@ package vn.vnpost.lunchorder.core.modules.notification.service.impl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,8 +57,18 @@ public class NotificationServiceImpl implements NotificationService {
         notificationRepository.markAllAsRead(userId);
     }
 
+    /**
+     * Kích thước lô khi broadcast notification cho toàn bộ user. Mỗi lô được nạp từ DB,
+     * tạo notification rồi lưu và giải phóng, tránh nạp toàn bộ user vào RAM (rủi ro OOM).
+     */
+    private static final int BROADCAST_BATCH_SIZE = 500;
+
+    /**
+     * Không đặt {@code @Transactional} ở cấp method: nhánh broadcast phải để mỗi lô commit
+     * độc lập (xem {@link #broadcastToAllUsers}). Nhánh gửi cho 1 user chỉ có một lệnh
+     * {@code save} vốn đã tự chạy trong transaction riêng của repository.
+     */
     @Override
-    @Transactional
     public void sendNotification(NotificationSendRequest request) {
         if (request.getUserId() != null) {
             User user = userRepository.findById(request.getUserId())
@@ -70,9 +81,27 @@ public class NotificationServiceImpl implements NotificationService {
             notification.setIsRead(false);
             notificationRepository.save(notification);
         } else {
-            // Broadcast to all users
-            List<User> allUsers = userRepository.findAll();
-            List<Notification> notifications = allUsers.stream().map(user -> {
+            broadcastToAllUsers(request);
+        }
+    }
+
+    /**
+     * Broadcast notification cho toàn bộ user theo lô. Duyệt user theo trang (size
+     * {@link #BROADCAST_BATCH_SIZE}); mỗi trang tạo và lưu notifications rồi giải phóng, tránh
+     * nạp toàn bộ user vào RAM (rủi ro OOM).
+     * <p>
+     * Không đặt {@code @Transactional} bao trọn vòng lặp để không giữ một transaction quá lớn:
+     * mỗi lần {@code saveAll} tự chạy trong transaction riêng của repository (SimpleJpaRepository),
+     * nên mỗi trang được commit độc lập.
+     */
+    private void broadcastToAllUsers(NotificationSendRequest request) {
+        int pageNumber = 0;
+        Page<User> page;
+        do {
+            Pageable pageable = PageRequest.of(pageNumber, BROADCAST_BATCH_SIZE);
+            page = userRepository.findAll(pageable);
+
+            List<Notification> notifications = page.getContent().stream().map(user -> {
                 Notification notification = new Notification();
                 notification.setUser(user);
                 notification.setTitle(request.getTitle());
@@ -80,8 +109,10 @@ public class NotificationServiceImpl implements NotificationService {
                 notification.setIsRead(false);
                 return notification;
             }).collect(Collectors.toList());
+
             notificationRepository.saveAll(notifications);
-        }
+            pageNumber++;
+        } while (page.hasNext());
     }
 
     @Override

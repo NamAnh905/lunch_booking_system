@@ -12,12 +12,13 @@ spring:
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
 
   data:
     redis:
       host: localhost
       port: 6379
+      repositories:
+        enabled: false
 
   cache:
     type: redis

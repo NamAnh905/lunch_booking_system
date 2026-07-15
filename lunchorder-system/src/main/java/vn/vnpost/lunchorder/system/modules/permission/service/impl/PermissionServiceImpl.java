@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 import vn.vnpost.lunchorder.common.base.PageResponse;
+import vn.vnpost.lunchorder.common.constant.PaginationConstants;
 import vn.vnpost.lunchorder.common.entity.Permission;
 import vn.vnpost.lunchorder.common.exception.AppException;
 import vn.vnpost.lunchorder.common.exception.ErrorCode;
@@ -34,7 +35,7 @@ public class PermissionServiceImpl implements PermissionService {
     @CacheEvict(value = "permissions", allEntries = true)
     public PermissionResponse create(PermissionCreateRequest request) {
         if (permissionRepository.findByAction(request.getAction()).isPresent()) {
-            throw new AppException(ErrorCode.INVALID_KEY);
+            throw new AppException(ErrorCode.PERMISSION_ALREADY_EXISTS);
         }
         Permission permission = permissionMapper.toEntity(request);
         Permission savedPermission = permissionRepository.save(permission);
@@ -63,7 +64,7 @@ public class PermissionServiceImpl implements PermissionService {
     }
 
     @Override
-    @Cacheable(value = "permissions")
+    @Cacheable(value = "permissions", key = "'findByAction:' + #action")
     public PermissionResponse findByAction(String action) {
         Permission permission = permissionRepository.findByAction(action)
                 .orElseThrow(() -> new AppException(ErrorCode.PERMISSION_NOT_FOUND));
@@ -71,10 +72,18 @@ public class PermissionServiceImpl implements PermissionService {
     }
 
     @Override
-    @Cacheable(value = "permissions")
+    @Cacheable(value = "permissions", key = "'all'")
+    public List<PermissionResponse> getAll() {
+        Pageable pageable = PageRequest.of(0, PaginationConstants.MAX_LOOKUP_SIZE);
+        List<Permission> permissions = permissionRepository.findAll(pageable).getContent();
+        return permissionMapper.toDtoList(permissions);
+    }
+
+    @Override
+    @Cacheable(value = "permissions", key = "'findAll:' + #keyword + ':' + #page + ':' + #size")
     public PageResponse<PermissionResponse> findAll(String keyword, int page, int size) {
         int pageNumber = Math.max(0, page - 1);
-        Pageable pageable = PageRequest.of(pageNumber, size);
+        Pageable pageable = PageRequest.of(pageNumber, PaginationConstants.clampSize(size));
 
         Page<Permission> permissionPage;
         if (keyword != null && !keyword.trim().isEmpty()) {

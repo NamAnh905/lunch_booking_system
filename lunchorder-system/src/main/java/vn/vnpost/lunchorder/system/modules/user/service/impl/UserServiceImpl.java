@@ -1,11 +1,15 @@
 package vn.vnpost.lunchorder.system.modules.user.service.impl;
 
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Optional;
 
+import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -13,11 +17,14 @@ import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
 import vn.vnpost.lunchorder.common.base.PageResponse;
+import vn.vnpost.lunchorder.common.constant.PaginationConstants;
 import vn.vnpost.lunchorder.common.entity.Department;
 import vn.vnpost.lunchorder.common.entity.User;
 import vn.vnpost.lunchorder.common.exception.AppException;
 import vn.vnpost.lunchorder.common.exception.ErrorCode;
 import vn.vnpost.lunchorder.system.modules.department.repository.DepartmentRepository;
+import vn.vnpost.lunchorder.system.modules.auth.service.dto.ChangePasswordRequest;
+import vn.vnpost.lunchorder.system.modules.auth.service.dto.ProfileUpdateRequest;
 import vn.vnpost.lunchorder.system.modules.user.repository.UserRepository;
 import vn.vnpost.lunchorder.system.modules.user.service.UserService;
 import vn.vnpost.lunchorder.system.modules.user.service.dto.UserCreateRequest;
@@ -46,11 +53,12 @@ public class UserServiceImpl implements UserService {
         }
         try {
             Long id = Long.parseLong(departmentValue);
-            java.util.Optional<Department> deptOpt = departmentRepository.findById(id);
+            Optional<Department> deptOpt = departmentRepository.findById(id);
             if (deptOpt.isPresent()) {
                 return deptOpt.get();
             }
         } catch (NumberFormatException e) {
+            // Not a numeric id → fall through and resolve by code/name below
         }
 
         return departmentRepository.findByCode(departmentValue)
@@ -117,6 +125,34 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     @CacheEvict(value = "users", allEntries = true)
+    public UserResponse updateProfile(String username, ProfileUpdateRequest request) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        user.setFullName(request.getFullName());
+
+        User savedUser = userRepository.save(user);
+        return userMapper.toDto(savedUser);
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "users", allEntries = true)
+    public void changePassword(String username, ChangePasswordRequest request) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            throw new AppException(ErrorCode.INVALID_PASSWORD);
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "users", allEntries = true)
     public void delete(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -125,7 +161,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Cacheable(value = "users")
+    @Cacheable(value = "users", key = "'username:' + #username")
     public UserResponse findByUsername(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -133,13 +169,13 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Cacheable(value = "users")
+    @Cacheable(value = "users", key = "'list:' + #page + '-' + #size + '-' + #keyword + '-' + #departmentIds + '-' + #isActives")
     public PageResponse<UserResponse> findAll(int page, int size, String keyword, List<Long> departmentIds, List<Boolean> isActives) {
         int pageNumber = Math.max(0, page - 1);
-        Pageable pageable = PageRequest.of(pageNumber, size, Sort.by(Sort.Direction.DESC, "id"));
+        Pageable pageable = PageRequest.of(pageNumber, PaginationConstants.clampSize(size), Sort.by(Sort.Direction.DESC, "id"));
 
-        org.springframework.data.jpa.domain.Specification<User> spec = (root, query, cb) -> {
-            List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
+        Specification<User> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
             if (keyword != null && !keyword.trim().isEmpty()) {
                 String likeKeyword = "%" + keyword.trim().toLowerCase() + "%";
                 predicates.add(cb.or(
@@ -153,7 +189,7 @@ public class UserServiceImpl implements UserService {
             if (isActives != null && !isActives.isEmpty()) {
                 predicates.add(root.get("isActive").in(isActives));
             }
-            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+            return cb.and(predicates.toArray(new Predicate[0]));
         };
 
         Page<User> userPage = userRepository.findAll(spec, pageable);
@@ -170,14 +206,22 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Cacheable(value = "users")
+    @Cacheable(value = "users", key = "'all'")
+    public List<UserResponse> getAll() {
+        Pageable pageable = PageRequest.of(0, PaginationConstants.MAX_LOOKUP_SIZE, Sort.by(Sort.Direction.DESC, "id"));
+        List<User> users = userRepository.findAll(pageable).getContent();
+        return userMapper.toDtoList(users);
+    }
+
+    @Override
+    @Cacheable(value = "users", key = "'search:' + #keyword")
     public List<UserResponse> search(String keyword) {
         List<User> users = userRepository.findByFullNameContainingIgnoreCaseOrUsernameContainingIgnoreCase(keyword, keyword);
         return userMapper.toDtoList(users);
     }
 
     @Override
-    @Cacheable(value = "users")
+    @Cacheable(value = "users", key = "'export:' + #keyword")
     public List<UserResponse> export(String keyword) {
         List<User> users;
         Sort sort = Sort.by(Sort.Direction.DESC, "id");

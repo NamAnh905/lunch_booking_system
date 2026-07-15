@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import vn.vnpost.lunchorder.common.base.BaseEntity;
+import vn.vnpost.lunchorder.common.enums.PaymentMethod;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -25,8 +26,9 @@ public class Payment extends BaseEntity {
     @Column(name = "amount", precision = 10, scale = 2, nullable = false)
     private BigDecimal amount;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "payment_method", length = 20, nullable = false)
-    private String paymentMethod;
+    private PaymentMethod paymentMethod;
 
     @Column(name = "payment_month", nullable = false)
     private Integer paymentMonth;

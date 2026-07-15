@@ -4,17 +4,19 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Getter;
 import lombok.Setter;
 import vn.vnpost.lunchorder.common.base.BaseResponse;
+import vn.vnpost.lunchorder.common.enums.MenuType;
 import vn.vnpost.lunchorder.core.modules.dish.service.dto.DishResponse;
 import vn.vnpost.lunchorder.core.modules.price.service.dto.PriceResponse;
-import vn.vnpost.lunchorder.system.modules.excel.annotation.ExcelColumn;
+import vn.vnpost.lunchorder.tools.excel.ExcelColumn;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Getter
 @Setter
-@JsonIgnoreProperties(value = { "createdAt", "updatedAt", "createdBy", "updatedBy" }, ignoreUnknown = true)
+@JsonIgnoreProperties(value = { "updatedAt", "createdBy", "updatedBy" }, ignoreUnknown = true)
 public class MenuResponse extends BaseResponse {
     
     @Override
@@ -42,7 +44,7 @@ public class MenuResponse extends BaseResponse {
             return "";
         }
         return dishes.stream()
-                .filter(java.util.Objects::nonNull)
+                .filter(Objects::nonNull)
                 .map(DishResponse::getName)
                 .collect(Collectors.joining(", "));
     }
@@ -55,6 +57,9 @@ public class MenuResponse extends BaseResponse {
         return "Khóa";
     }
 
+    private String name;
+    private MenuType type;
+    private String imageUrl;
     private LocalDate menuDate;
     private PriceResponse price;
     private String status;

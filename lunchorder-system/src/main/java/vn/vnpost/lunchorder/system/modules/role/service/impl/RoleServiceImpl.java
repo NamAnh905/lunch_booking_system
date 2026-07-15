@@ -80,7 +80,7 @@ public class RoleServiceImpl implements RoleService {
     }
 
     @Override
-    @Cacheable(value = "roles")
+    @Cacheable(value = "roles", key = "'findByCode:' + #code")
     public RoleResponse findByCode(String code) {
         Role role = roleRepository.findByCode(code)
                 .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
@@ -88,7 +88,7 @@ public class RoleServiceImpl implements RoleService {
     }
 
     @Override
-    @Cacheable(value = "roles")
+    @Cacheable(value = "roles", key = "'findAll:' + #keyword")
     public List<RoleResponse> findAll(String keyword) {
         List<Role> roles;
         Sort sort = Sort.by(Sort.Direction.DESC, "id");

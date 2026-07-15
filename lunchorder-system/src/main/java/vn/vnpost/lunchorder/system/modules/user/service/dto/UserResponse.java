@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Getter;
 import lombok.Setter;
 import vn.vnpost.lunchorder.common.base.BaseResponse;
-import vn.vnpost.lunchorder.system.modules.excel.annotation.ExcelColumn;
+import vn.vnpost.lunchorder.tools.excel.ExcelColumn;
 
 import java.util.Set;
 

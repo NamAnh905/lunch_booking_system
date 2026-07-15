@@ -35,9 +35,10 @@ public class PaymentServiceImpl implements PaymentService {
         User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        // Validate payment method
+        // Validate and resolve the payment method
+        PaymentMethod paymentMethod;
         try {
-            PaymentMethod.valueOf(request.getPaymentMethod().toUpperCase());
+            paymentMethod = PaymentMethod.valueOf(request.getPaymentMethod().toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new AppException(ErrorCode.INVALID_ENUM_VALUE);
         }
@@ -45,7 +46,7 @@ public class PaymentServiceImpl implements PaymentService {
         Payment payment = new Payment();
         payment.setUser(user);
         payment.setAmount(request.getAmount());
-        payment.setPaymentMethod(request.getPaymentMethod().toUpperCase());
+        payment.setPaymentMethod(paymentMethod);
         payment.setPaymentMonth(request.getPaymentMonth());
         payment.setPaymentYear(request.getPaymentYear());
         payment.setNote(request.getNote());

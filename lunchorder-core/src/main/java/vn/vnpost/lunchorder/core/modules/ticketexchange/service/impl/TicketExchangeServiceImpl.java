@@ -8,13 +8,14 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.vnpost.lunchorder.common.base.PageResponse;
+import vn.vnpost.lunchorder.common.constant.PaginationConstants;
 import vn.vnpost.lunchorder.common.entity.Order;
 import vn.vnpost.lunchorder.common.entity.TicketExchange;
 import vn.vnpost.lunchorder.common.entity.User;
 import vn.vnpost.lunchorder.common.exception.AppException;
 import vn.vnpost.lunchorder.common.exception.ErrorCode;
-import vn.vnpost.lunchorder.common.repository.SystemConfigRepository;
 import vn.vnpost.lunchorder.core.modules.order.repository.OrderRepository;
+import vn.vnpost.lunchorder.core.policy.CutOffPolicy;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.repository.TicketExchangeRepository;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.service.TicketExchangeService;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.service.dto.TicketExchangeCreateRequest;
@@ -39,36 +40,17 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
     private final TicketExchangeRepository ticketExchangeRepository;
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
-    private final SystemConfigRepository systemConfigRepository;
     private final TicketExchangeMapper ticketExchangeMapper;
     private final NotificationService notificationService;
-
-    private boolean isValidExchangeTimeWindow(LocalDate menuDate) {
-        LocalDateTime now = LocalDateTime.now();
-        LocalTime cutOffTime = getCutOffTime();
-        LocalDateTime cutOffStart = menuDate.minusDays(1).atTime(cutOffTime);
-        LocalDateTime cutOffEnd = menuDate.atTime(10, 30);
-        return !now.isBefore(cutOffStart) && !now.isAfter(cutOffEnd);
-    }
-
-    private LocalTime getCutOffTime() {
-        return systemConfigRepository.findByConfigKey("CUT_OFF_TIME")
-                .map(config -> {
-                    try {
-                        return LocalTime.parse(config.getConfigValue());
-                    } catch (Exception e) {
-                        log.error("Failed to parse CUT_OFF_TIME configuration: {}", config.getConfigValue(), e);
-                        return LocalTime.of(14, 45);
-                    }
-                })
-                .orElse(LocalTime.of(14, 45));
-    }
+    private final CutOffPolicy cutOffPolicy;
 
     @Override
-    public PageResponse<TicketExchangeResponse> getOpenExchanges(int page, int size, String status, String keyword) {
+    public PageResponse<TicketExchangeResponse> getOpenExchanges(Long currentUserId, int page, int size, String keyword) {
         int pageNumber = Math.max(0, page - 1);
-        Pageable pageable = PageRequest.of(pageNumber, size);
-        Page<TicketExchange> entityPage = ticketExchangeRepository.findForAdmin(null, null, status, keyword, pageable);
+        Pageable pageable = PageRequest.of(pageNumber, PaginationConstants.clampSize(size));
+
+        Page<TicketExchange> entityPage = ticketExchangeRepository.findOpenForMarket(
+                TicketExchangeStatus.OPEN, currentUserId, keyword, pageable);
         List<TicketExchangeResponse> dtoList = entityPage.getContent().stream()
                 .map(ticketExchangeMapper::toDto)
                 .toList();
@@ -84,7 +66,7 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
 
     @Override
     public List<TicketExchangeResponse> getMyListedTickets(Long userId) {
-        List<TicketExchange> entityList = ticketExchangeRepository.findBySellerIdAndStatus(userId, TicketExchangeStatus.OPEN.name());
+        List<TicketExchange> entityList = ticketExchangeRepository.findBySellerIdAndStatus(userId, TicketExchangeStatus.OPEN);
         return entityList.stream()
                 .map(ticketExchangeMapper::toDto)
                 .toList();
@@ -102,35 +84,35 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
         }
 
         // Verify status is PENDING
-        if (!OrderStatus.PENDING.name().equalsIgnoreCase(order.getStatus())) {
+        if (order.getStatus() != OrderStatus.PENDING) {
             throw new AppException(ErrorCode.ORDER_CANNOT_PASS);
         }
 
         // Verify order is not already listed in market
-        if (ticketExchangeRepository.findByOrderIdAndStatus(order.getId(), TicketExchangeStatus.OPEN.name())
+        if (ticketExchangeRepository.findByOrderIdAndStatus(order.getId(), TicketExchangeStatus.OPEN)
                 .isPresent()) {
             throw new AppException(ErrorCode.ORDER_IN_MARKET);
         }
 
         // Check time constraints
         LocalDate menuDate = order.getOrderDate();
-        if (!isValidExchangeTimeWindow(menuDate)) {
+        if (!cutOffPolicy.isWithinExchangeWindow(menuDate)) {
             throw new AppException(ErrorCode.ORDER_CANNOT_PASS);
         }
 
         // Check if there is a cancelled/withdrawn exchange for this order, we can
         // update it or create new
         Optional<TicketExchange> existingExchangeOpt = ticketExchangeRepository.findByOrderIdAndStatus(order.getId(),
-                TicketExchangeStatus.CANCELLED.name());
+                TicketExchangeStatus.CANCELLED);
         TicketExchange ticketExchange;
         if (existingExchangeOpt.isPresent()) {
             ticketExchange = existingExchangeOpt.get();
-            ticketExchange.setStatus(TicketExchangeStatus.OPEN.name());
+            ticketExchange.setStatus(TicketExchangeStatus.OPEN);
             ticketExchange.setBuyer(null);
         } else {
             ticketExchange = new TicketExchange();
             ticketExchange.setOrder(order);
-            ticketExchange.setStatus(TicketExchangeStatus.OPEN.name());
+            ticketExchange.setStatus(TicketExchangeStatus.OPEN);
         }
 
         ticketExchange = ticketExchangeRepository.save(ticketExchange);
@@ -143,7 +125,7 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
         TicketExchange ticketExchange = ticketExchangeRepository.findByIdForUpdate(exchangeId)
                 .orElseThrow(() -> new AppException(ErrorCode.EXCHANGE_NOT_FOUND));
 
-        if (!TicketExchangeStatus.OPEN.name().equalsIgnoreCase(ticketExchange.getStatus())) {
+        if (ticketExchange.getStatus() != TicketExchangeStatus.OPEN) {
             throw new AppException(ErrorCode.EXCHANGE_NOT_OPEN);
         }
 
@@ -159,21 +141,7 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
             throw new AppException(ErrorCode.ORDER_CUTOFF_REACHED);
         }
 
-        ticketExchange.setStatus(TicketExchangeStatus.CANCELLED.name());
-        ticketExchangeRepository.save(ticketExchange);
-    }
-
-    @Override
-    @Transactional
-    public void forceCancelTicket(Long exchangeId) {
-        TicketExchange ticketExchange = ticketExchangeRepository.findByIdForUpdate(exchangeId)
-                .orElseThrow(() -> new AppException(ErrorCode.EXCHANGE_NOT_FOUND));
-
-        if (!TicketExchangeStatus.OPEN.name().equalsIgnoreCase(ticketExchange.getStatus())) {
-            throw new AppException(ErrorCode.EXCHANGE_NOT_OPEN);
-        }
-
-        ticketExchange.setStatus(TicketExchangeStatus.CANCELLED.name());
+        ticketExchange.setStatus(TicketExchangeStatus.CANCELLED);
         ticketExchangeRepository.save(ticketExchange);
     }
 
@@ -183,7 +151,7 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
         TicketExchange ticketExchange = ticketExchangeRepository.findByIdForUpdate(exchangeId)
                 .orElseThrow(() -> new AppException(ErrorCode.EXCHANGE_NOT_FOUND));
 
-        if (!TicketExchangeStatus.OPEN.name().equalsIgnoreCase(ticketExchange.getStatus())) {
+        if (ticketExchange.getStatus() != TicketExchangeStatus.OPEN) {
             throw new AppException(ErrorCode.EXCHANGE_NOT_OPEN);
         }
 
@@ -194,14 +162,14 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
 
         // Check if buyer already has an active order for this menu date
         LocalDate menuDate = ticketExchange.getOrder().getOrderDate();
-        boolean hasActiveOrderOnSameDay = orderRepository.findByUserIdAndOrderDateBetween(userId, menuDate, menuDate).stream()
-                .anyMatch(o -> !OrderStatus.CANCELLED.name().equalsIgnoreCase(o.getStatus()));
+        boolean hasActiveOrderOnSameDay = orderRepository.findByUserIdAndOrderDateBetween(userId, menuDate, menuDate, TicketExchangeStatus.OPEN).stream()
+                .anyMatch(o -> o.getStatus() != OrderStatus.CANCELLED);
         if (hasActiveOrderOnSameDay) {
             throw new AppException(ErrorCode.ORDER_ALREADY_EXISTS);
         }
 
         // Check time constraints: Must be within exchange time window
-        if (!isValidExchangeTimeWindow(menuDate)) {
+        if (!cutOffPolicy.isWithinExchangeWindow(menuDate)) {
             throw new AppException(ErrorCode.ORDER_CUTOFF_REACHED);
         }
 
@@ -214,14 +182,14 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
                 .orElse(ticketExchange.getOrder().getUser());
 
         // Update exchange
-        ticketExchange.setStatus(TicketExchangeStatus.MATCHED.name());
+        ticketExchange.setStatus(TicketExchangeStatus.MATCHED);
         ticketExchange.setBuyer(buyer);
         ticketExchange = ticketExchangeRepository.save(ticketExchange);
 
         // Update order
         Order order = ticketExchange.getOrder();
         order.setUser(buyer);
-        order.setStatus(OrderStatus.PENDING.name());
+        order.setStatus(OrderStatus.PENDING);
         orderRepository.save(order);
 
         // Send notifications
@@ -246,9 +214,9 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
     @Override
     public PageResponse<TicketExchangeResponse> getAdminExchanges(int page, int size, LocalDate startDate, LocalDate endDate, String status, String keyword) {
         int pageNumber = Math.max(0, page - 1);
-        Pageable pageable = PageRequest.of(pageNumber, size);
+        Pageable pageable = PageRequest.of(pageNumber, PaginationConstants.clampSize(size));
         
-        Page<TicketExchange> entityPage = ticketExchangeRepository.findForAdmin(startDate, endDate, status, keyword, pageable);
+        Page<TicketExchange> entityPage = ticketExchangeRepository.findForAdmin(startDate, endDate, parseStatusOrNull(status), keyword, pageable);
         List<TicketExchangeResponse> dtoList = entityPage.getContent().stream()
                 .map(ticketExchangeMapper::toDto)
                 .toList();
@@ -260,6 +228,23 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
                 .totalElements(entityPage.getTotalElements())
                 .data(dtoList)
                 .build();
+    }
+
+    /**
+     * Convert the optional status filter received from the client into a
+     * {@link TicketExchangeStatus}. Returns {@code null} when no status is
+     * supplied (so the query skips the filter) and throws
+     * {@link ErrorCode#INVALID_ENUM_VALUE} for an unrecognised value.
+     */
+    private TicketExchangeStatus parseStatusOrNull(String status) {
+        if (status == null || status.isBlank()) {
+            return null;
+        }
+        try {
+            return TicketExchangeStatus.valueOf(status.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new AppException(ErrorCode.INVALID_ENUM_VALUE);
+        }
     }
 
 }

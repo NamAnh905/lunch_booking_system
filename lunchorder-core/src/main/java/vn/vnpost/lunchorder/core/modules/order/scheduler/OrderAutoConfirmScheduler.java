@@ -43,8 +43,8 @@ public class OrderAutoConfirmScheduler {
         try {
             int updatedCount = orderRepository.updateStatusByOrderDateAndCurrentStatus(
                     today,
-                    OrderStatus.PENDING.name(),
-                    OrderStatus.CONFIRMED.name());
+                    OrderStatus.PENDING,
+                    OrderStatus.CONFIRMED);
 
             if (updatedCount > 0) {
                 log.info("Auto-confirm: {} order(s) confirmed for date {}", updatedCount, today);

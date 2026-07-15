@@ -1,7 +1,9 @@
 package vn.vnpost.lunchorder.core.modules.feedback.controller;
 
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import vn.vnpost.lunchorder.common.base.ApiResponse;
 import vn.vnpost.lunchorder.common.base.PageResponse;
@@ -10,6 +12,7 @@ import vn.vnpost.lunchorder.core.modules.feedback.service.dto.FeedbackResponse;
 
 @RestController
 @RequiredArgsConstructor
+@Validated
 @RequestMapping("/admin/feedbacks")
 public class AdminFeedbackController {
 
@@ -18,7 +21,7 @@ public class AdminFeedbackController {
     @GetMapping
     @PreAuthorize("hasAuthority('DELETE_ANY_FEEDBACK')")
     public ApiResponse<PageResponse<FeedbackResponse>> getFeedbacks(
-            @RequestParam(name = "page", defaultValue = "1") int page) {
+            @RequestParam(name = "page", defaultValue = "1") @Min(1) int page) {
         return ApiResponse.<PageResponse<FeedbackResponse>>builder()
                 .result(feedbackService.getFeedbacks(page))
                 .build();

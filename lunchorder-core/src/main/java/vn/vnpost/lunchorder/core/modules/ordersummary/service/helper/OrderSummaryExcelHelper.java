@@ -6,6 +6,7 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Component;
 import vn.vnpost.lunchorder.common.repository.SystemConfigRepository;
+import vn.vnpost.lunchorder.core.modules.ordersummary.repository.projection.MonthlyOrderDetail;
 import vn.vnpost.lunchorder.core.modules.ordersummary.service.dto.DailyOrderSummaryResponse;
 import vn.vnpost.lunchorder.core.modules.ordersummary.service.dto.MonthlyOrderSummaryResponse;
 import vn.vnpost.lunchorder.core.modules.ordersummary.service.dto.OrderSummaryItemResponse;
@@ -174,45 +175,31 @@ public class OrderSummaryExcelHelper {
     }
 
     public byte[] exportMonthlyMatrixExcel(int month, int year, MonthlyOrderSummaryResponse summary,
-            List<Object[]> detailRecords, BigDecimal normalPrice, BigDecimal specialPrice) {
+            List<MonthlyOrderDetail> detailRecords, BigDecimal normalPrice, BigDecimal specialPrice) {
         // Map from userId -> Map<Integer (day), String ("X" or "XX")>
         Map<Long, Map<Integer, String>> userDayMealMap = new HashMap<>();
         Map<Integer, Integer> dayNormalCountMap = new HashMap<>();
         Map<Integer, Integer> daySpecialCountMap = new HashMap<>();
 
-        for (Object[] row : detailRecords) {
-            if (row[0] == null || row[1] == null) {
+        for (MonthlyOrderDetail record : detailRecords) {
+            if (record.getUserId() == null || record.getOrderDate() == null) {
                 continue;
             }
-            Long userId = ((Number) row[0]).longValue();
+            Long userId = record.getUserId();
+            LocalDate date = record.getOrderDate();
 
-            // Safe LocalDate conversion
-            Object dateObj = row[1];
-            LocalDate date = null;
-            if (dateObj instanceof LocalDate) {
-                date = (LocalDate) dateObj;
-            } else if (dateObj instanceof java.sql.Date) {
-                date = ((java.sql.Date) dateObj).toLocalDate();
-            } else if (dateObj instanceof java.util.Date) {
-                date = ((java.util.Date) dateObj).toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+            BigDecimal price = record.getPrice() != null ? record.getPrice() : BigDecimal.ZERO;
+            boolean isSpecial = price.compareTo(normalPrice) > 0;
+
+            int day = date.getDayOfMonth();
+            userDayMealMap
+                    .computeIfAbsent(userId, k -> new HashMap<>())
+                    .put(day, isSpecial ? "XX" : "X");
+
+            if (isSpecial) {
+                daySpecialCountMap.put(day, daySpecialCountMap.getOrDefault(day, 0) + 1);
             } else {
-                date = LocalDate.parse(dateObj.toString());
-            }
-
-            BigDecimal priceObj = row[2] != null ? (BigDecimal) row[2] : BigDecimal.ZERO;
-            Boolean isSpecial = priceObj.compareTo(normalPrice) > 0;
-
-            if (userId != null && date != null) {
-                int day = date.getDayOfMonth();
-                userDayMealMap
-                        .computeIfAbsent(userId, k -> new HashMap<>())
-                        .put(day, Boolean.TRUE.equals(isSpecial) ? "XX" : "X");
-
-                if (Boolean.TRUE.equals(isSpecial)) {
-                    daySpecialCountMap.put(day, daySpecialCountMap.getOrDefault(day, 0) + 1);
-                } else {
-                    dayNormalCountMap.put(day, dayNormalCountMap.getOrDefault(day, 0) + 1);
-                }
+                dayNormalCountMap.put(day, dayNormalCountMap.getOrDefault(day, 0) + 1);
             }
         }
 

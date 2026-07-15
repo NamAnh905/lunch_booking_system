@@ -11,6 +11,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.vnpost.lunchorder.common.base.PageResponse;
+import vn.vnpost.lunchorder.common.constant.PaginationConstants;
 import vn.vnpost.lunchorder.common.entity.Price;
 import vn.vnpost.lunchorder.common.exception.AppException;
 import vn.vnpost.lunchorder.common.exception.ErrorCode;
@@ -66,7 +67,7 @@ public class PriceServiceImpl implements PriceService {
     }
 
     @Override
-    @Cacheable(value = "prices")
+    @Cacheable(value = "prices", key = "'findById:' + #id")
     public PriceResponse findById(Long id) {
         Price price = priceRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.PRICE_NOT_FOUND));
@@ -74,10 +75,10 @@ public class PriceServiceImpl implements PriceService {
     }
 
     @Override
-    @Cacheable(value = "prices")
+    @Cacheable(value = "prices", key = "'list:' + #page + '-' + #size + '-' + #keyword")
     public PageResponse<PriceResponse> findAll(int page, int size, String keyword) {
         int pageNumber = Math.max(0, page - 1);
-        Pageable pageable = PageRequest.of(pageNumber, size, Sort.by(Sort.Direction.ASC, "id"));
+        Pageable pageable = PageRequest.of(pageNumber, PaginationConstants.clampSize(size), Sort.by(Sort.Direction.ASC, "id"));
 
         Page<Price> pricePage;
         if (keyword != null && !keyword.trim().isEmpty()) {
@@ -98,7 +99,7 @@ public class PriceServiceImpl implements PriceService {
     }
 
     @Override
-    @Cacheable(value = "prices")
+    @Cacheable(value = "prices", key = "'active'")
     public List<PriceResponse> getActivePrices() {
         List<Price> activePrices = priceRepository.findByIsActiveTrue();
         return priceMapper.toDtoList(activePrices);

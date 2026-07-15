@@ -7,6 +7,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import vn.vnpost.lunchorder.common.enums.OrderStatus;
+import vn.vnpost.lunchorder.common.enums.TicketSource;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -40,11 +42,13 @@ public class Order {
     @Column(name = "price", precision = 10, scale = 2)
     private BigDecimal price;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 20)
-    private String status;
+    private OrderStatus status;
 
-    @Column(name = "ticket_source", length = 10)
-    private String ticketSource;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ticket_source", length = 20)
+    private TicketSource ticketSource;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "original_user_id")

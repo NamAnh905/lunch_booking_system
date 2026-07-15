@@ -3,6 +3,7 @@ package vn.vnpost.lunchorder.common.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 import vn.vnpost.lunchorder.common.base.BaseEntity;
 
 import java.util.Set;
@@ -39,5 +40,6 @@ public class User extends BaseEntity {
         joinColumns = @JoinColumn(name = "user_id"),
         inverseJoinColumns = @JoinColumn(name = "role_id")
     )
+    @BatchSize(size = 100)
     private Set<Role> roles;
 }

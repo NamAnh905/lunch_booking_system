@@ -1,14 +1,19 @@
 package vn.vnpost.lunchorder.core.modules.menu.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import vn.vnpost.lunchorder.common.base.ApiResponse;
 import vn.vnpost.lunchorder.common.base.PageResponse;
+import vn.vnpost.lunchorder.common.exception.AppException;
+import vn.vnpost.lunchorder.common.exception.ErrorCode;
 import vn.vnpost.lunchorder.core.modules.menu.service.MenuService;
 import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuCreateRequest;
+import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuImageCreateRequest;
 import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuResponse;
 import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuUpdateRequest;
 
@@ -20,10 +25,11 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import vn.vnpost.lunchorder.system.modules.excel.service.ExcelExportService;
+import vn.vnpost.lunchorder.tools.excel.ExcelExportService;
 
 @RestController
 @RequiredArgsConstructor
+@Validated
 @RequestMapping("/admin/menus")
 public class MenuController {
 
@@ -35,6 +41,23 @@ public class MenuController {
     public ApiResponse<MenuResponse> create(@RequestBody @Valid MenuCreateRequest request) {
         return ApiResponse.<MenuResponse>builder()
                 .result(menuService.create(request))
+                .build();
+    }
+
+    @PostMapping("/image")
+    @PreAuthorize("hasAuthority('MANAGE_MENUS')")
+    public ApiResponse<MenuResponse> createImageMenu(@RequestBody @Valid MenuImageCreateRequest request) {
+        return ApiResponse.<MenuResponse>builder()
+                .result(menuService.createImageMenu(request))
+                .build();
+    }
+
+    @PutMapping("/image/{id}")
+    @PreAuthorize("hasAuthority('MANAGE_MENUS')")
+    public ApiResponse<MenuResponse> updateImageMenu(@PathVariable Long id,
+            @RequestBody @Valid MenuImageCreateRequest request) {
+        return ApiResponse.<MenuResponse>builder()
+                .result(menuService.updateImageMenu(id, request))
                 .build();
     }
 
@@ -56,18 +79,21 @@ public class MenuController {
 
     @GetMapping
     @PreAuthorize("hasAnyAuthority('VIEW_ADMIN_MENUS', 'CREATE_OWN_ORDER')")
-    public ApiResponse<?> getMenus(
-            @RequestParam(value = "date", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam(value = "page", defaultValue = "1") int page,
-            @RequestParam(value = "size", defaultValue = "10") int size,
+    public ApiResponse<PageResponse<MenuResponse>> getMenus(
+            @RequestParam(value = "page", defaultValue = "1") @Min(1) int page,
+            @RequestParam(value = "size", defaultValue = "10") @Min(1) int size,
             @RequestParam(value = "keyword", required = false) String keyword) {
-        if (date != null) {
-            return ApiResponse.<List<MenuResponse>>builder()
-                    .result(menuService.findByDate(date))
-                    .build();
-        }
         return ApiResponse.<PageResponse<MenuResponse>>builder()
                 .result(menuService.findAll(page, size, keyword))
+                .build();
+    }
+
+    @GetMapping("/by-date")
+    @PreAuthorize("hasAnyAuthority('VIEW_ADMIN_MENUS', 'CREATE_OWN_ORDER')")
+    public ApiResponse<List<MenuResponse>> getMenusByDate(
+            @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ApiResponse.<List<MenuResponse>>builder()
+                .result(menuService.findByDate(date))
                 .build();
     }
 
@@ -95,7 +121,7 @@ public class MenuController {
                     .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                     .body(excelData);
         } catch (IOException e) {
-            throw new RuntimeException("Failed to export Excel", e);
+            throw new AppException(ErrorCode.EXPORT_FAILED);
         }
     }
 

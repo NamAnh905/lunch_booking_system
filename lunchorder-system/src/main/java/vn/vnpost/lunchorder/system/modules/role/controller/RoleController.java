@@ -13,6 +13,8 @@ import vn.vnpost.lunchorder.system.modules.role.service.dto.RoleUpdateRequest;
 
 import vn.vnpost.lunchorder.system.modules.role.service.dto.RoleAssignPermissionsRequest;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/admin/roles")
@@ -45,9 +47,9 @@ public class RoleController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('VIEW_ROLES')")
-    public ApiResponse<java.util.List<RoleResponse>> findAll(
+    public ApiResponse<List<RoleResponse>> findAll(
             @RequestParam(value = "keyword", required = false) String keyword) {
-        return ApiResponse.<java.util.List<RoleResponse>>builder()
+        return ApiResponse.<List<RoleResponse>>builder()
                 .result(roleService.findAll(keyword))
                 .build();
     }

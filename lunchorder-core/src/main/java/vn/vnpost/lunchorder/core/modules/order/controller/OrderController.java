@@ -32,7 +32,7 @@ public class OrderController {
                         @RequestParam("fromDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
                         @RequestParam("toDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate) {
                 return ApiResponse.<List<OrderResponse>>builder()
-                                .result(orderService.getMyOrders(userPrincipal.getUserId(), fromDate, toDate))
+                                .result(orderService.getOrdersByUser(userPrincipal.getUserId(), fromDate, toDate))
                                 .build();
         }
 
@@ -41,14 +41,14 @@ public class OrderController {
         public ApiResponse<List<OrderResponse>> create(
                         @AuthenticationPrincipal UserPrincipal userPrincipal,
                         @RequestBody @Valid OrderCreateRequest request) {
-                log.info("Received request to create orders for user ID {}: orderDates = {}", userPrincipal.getUserId(),
-                                request.getOrderDates());
+                log.debug("Received request to create orders for user ID {}: orders = {}", userPrincipal.getUserId(),
+                                request.getOrders());
                 return ApiResponse.<List<OrderResponse>>builder()
                                 .result(orderService.createOrders(userPrincipal.getUserId(), request))
                                 .build();
         }
 
-        @PutMapping("/{id}/cancel")
+        @PatchMapping("/{id}/cancel")
         @PreAuthorize("hasAuthority('CREATE_OWN_ORDER')")
         public ApiResponse<OrderResponse> cancel(
                         @AuthenticationPrincipal UserPrincipal userPrincipal,

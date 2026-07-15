@@ -15,6 +15,8 @@ public interface DishService {
 
     PageResponse<DishResponse> findAll(int page, int size, String keyword, List<String> types, List<Boolean> isActives);
 
+    List<DishResponse> getAll();
+
     List<DishResponse> search(String name);
 
     List<DishResponse> export(String keyword);

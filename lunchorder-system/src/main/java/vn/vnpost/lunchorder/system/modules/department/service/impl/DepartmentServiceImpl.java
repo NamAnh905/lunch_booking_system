@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 import vn.vnpost.lunchorder.common.base.PageResponse;
+import vn.vnpost.lunchorder.common.constant.PaginationConstants;
 import vn.vnpost.lunchorder.common.entity.Department;
 import vn.vnpost.lunchorder.common.exception.AppException;
 import vn.vnpost.lunchorder.common.exception.ErrorCode;
@@ -48,7 +49,7 @@ public class DepartmentServiceImpl implements DepartmentService {
     @CacheEvict(value = "departments", allEntries = true)
     public DepartmentResponse create(DepartmentCreateRequest request) {
         if (departmentRepository.findByCode(request.getCode()).isPresent()) {
-            throw new AppException(ErrorCode.INVALID_KEY);
+            throw new AppException(ErrorCode.DEPARTMENT_CODE_EXISTS);
         }
         Department department = departmentMapper.toEntity(request);
         Department savedDepartment = departmentRepository.save(department);
@@ -93,10 +94,19 @@ public class DepartmentServiceImpl implements DepartmentService {
     }
 
     @Override
+    @Cacheable(value = "departments", key = "'all'")
+    public List<DepartmentResponse> getAll() {
+        Pageable pageable = PageRequest.of(0, PaginationConstants.MAX_LOOKUP_SIZE, Sort.by(Sort.Direction.DESC, "id"));
+        List<Department> departments = departmentRepository.findAll(pageable).getContent();
+        populateUserCounts(departments);
+        return departmentMapper.toDtoList(departments);
+    }
+
+    @Override
     @Cacheable(value = "departments", key = "'findAll:' + #keyword + ':' + #page + ':' + #size")
     public PageResponse<DepartmentResponse> findAll(String keyword, int page, int size) {
         int pageNumber = Math.max(0, page - 1);
-        Pageable pageable = PageRequest.of(pageNumber, size, Sort.by(Sort.Direction.DESC, "id"));
+        Pageable pageable = PageRequest.of(pageNumber, PaginationConstants.clampSize(size), Sort.by(Sort.Direction.DESC, "id"));
 
         Page<Department> departmentPage;
         if (keyword != null && !keyword.trim().isEmpty()) {

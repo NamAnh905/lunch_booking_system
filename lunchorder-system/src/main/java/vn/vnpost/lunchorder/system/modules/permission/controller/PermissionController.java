@@ -1,9 +1,13 @@
 package vn.vnpost.lunchorder.system.modules.permission.controller;
 
+import java.util.List;
+
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import vn.vnpost.lunchorder.common.base.ApiResponse;
 import vn.vnpost.lunchorder.common.base.PageResponse;
@@ -14,6 +18,7 @@ import vn.vnpost.lunchorder.system.modules.permission.service.dto.PermissionUpda
 
 @RestController
 @RequiredArgsConstructor
+@Validated
 @RequestMapping("/admin/permissions")
 public class PermissionController {
     private final PermissionService permissionService;
@@ -47,10 +52,18 @@ public class PermissionController {
     @PreAuthorize("hasAuthority('VIEW_PERMISSIONS')")
     public ApiResponse<PageResponse<PermissionResponse>> findAll(
             @RequestParam(value = "keyword", required = false) String keyword,
-            @RequestParam(value = "page", defaultValue = "1") int page,
-            @RequestParam(value = "size", defaultValue = "10") int size) {
+            @RequestParam(value = "page", defaultValue = "1") @Min(1) int page,
+            @RequestParam(value = "size", defaultValue = "10") @Min(1) int size) {
         return ApiResponse.<PageResponse<PermissionResponse>>builder()
                 .result(permissionService.findAll(keyword, page, size))
+                .build();
+    }
+
+    @GetMapping("/all")
+    @PreAuthorize("hasAuthority('VIEW_PERMISSIONS')")
+    public ApiResponse<List<PermissionResponse>> getAll() {
+        return ApiResponse.<List<PermissionResponse>>builder()
+                .result(permissionService.getAll())
                 .build();
     }
 

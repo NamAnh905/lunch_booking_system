@@ -3,9 +3,11 @@ package vn.vnpost.lunchorder.system.modules.department.controller;
 import java.util.List;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import vn.vnpost.lunchorder.common.base.ApiResponse;
 import vn.vnpost.lunchorder.common.base.PageResponse;
@@ -16,6 +18,7 @@ import vn.vnpost.lunchorder.system.modules.department.service.dto.DepartmentUpda
 
 @RestController
 @RequiredArgsConstructor
+@Validated
 @RequestMapping("/admin/departments")
 public class DepartmentController {
     private final DepartmentService departmentService;
@@ -49,10 +52,18 @@ public class DepartmentController {
     @PreAuthorize("hasAuthority('VIEW_DEPARTMENTS')")
     public ApiResponse<PageResponse<DepartmentResponse>> findAll(
             @RequestParam(value = "keyword", required = false, defaultValue = "") String keyword,
-            @RequestParam(value = "page", defaultValue = "1") int page,
-            @RequestParam(value = "size", defaultValue = "10") int size) {
+            @RequestParam(value = "page", defaultValue = "1") @Min(1) int page,
+            @RequestParam(value = "size", defaultValue = "10") @Min(1) int size) {
         return ApiResponse.<PageResponse<DepartmentResponse>>builder()
                 .result(departmentService.findAll(keyword, page, size))
+                .build();
+    }
+
+    @GetMapping("/all")
+    @PreAuthorize("hasAuthority('VIEW_DEPARTMENTS')")
+    public ApiResponse<List<DepartmentResponse>> getAll() {
+        return ApiResponse.<List<DepartmentResponse>>builder()
+                .result(departmentService.getAll())
                 .build();
     }
 

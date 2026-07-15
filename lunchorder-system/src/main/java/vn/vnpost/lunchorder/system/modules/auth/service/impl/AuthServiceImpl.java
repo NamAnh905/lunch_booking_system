@@ -123,16 +123,17 @@ public class AuthServiceImpl implements AuthService {
         try {
             SignedJWT signedJWT = verifyToken(request.getToken(), true);
             String jit = signedJWT.getJWTClaimsSet().getJWTID();
-            
+
             Long refreshExpiryMillis = signedJWT.getJWTClaimsSet().getLongClaim("refreshExpiry");
-            Instant expiryTime = refreshExpiryMillis != null
+            Instant oldRefreshExpiry = refreshExpiryMillis != null
                     ? Instant.ofEpochMilli(refreshExpiryMillis)
                     : signedJWT.getJWTClaimsSet().getIssueTime().toInstant().plus(REFRESHABLE_DURATION, ChronoUnit.SECONDS);
 
-            // Blacklist the old token
+            // Blacklist the old token; keep the blacklist row alive until the old token's
+            // own refresh window would have expired so it can never be reused.
             InvalidatedToken invalidatedToken = new InvalidatedToken();
             invalidatedToken.setToken(jit);
-            invalidatedToken.setExpiryTime(expiryTime);
+            invalidatedToken.setExpiryTime(oldRefreshExpiry);
             invalidatedTokenRepository.save(invalidatedToken);
 
             String emailOrUsername = signedJWT.getJWTClaimsSet().getSubject();
@@ -143,7 +144,10 @@ public class AuthServiceImpl implements AuthService {
                 throw new AppException(ErrorCode.USER_LOCKED);
             }
 
-            String token = generateToken(user, expiryTime);
+            // Sliding session: the new token gets a fresh refresh window from now,
+            // so an actively-used session is not force-logged-out on a fixed 1h boundary.
+            Instant newRefreshExpiry = Instant.now().plus(REFRESHABLE_DURATION, ChronoUnit.SECONDS);
+            String token = generateToken(user, newRefreshExpiry);
             return TokenResponse.builder()
                     .token(token)
                     .authenticated(true)
@@ -179,7 +183,7 @@ public class AuthServiceImpl implements AuthService {
             return jwsObject.serialize();
         } catch (JOSEException e) {
             log.error("Cannot create token", e);
-            throw new RuntimeException(e);
+            throw new AppException(ErrorCode.TOKEN_GENERATION_FAILED);
         }
     }
 

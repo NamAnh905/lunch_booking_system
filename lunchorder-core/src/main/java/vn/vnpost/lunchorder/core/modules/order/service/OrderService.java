@@ -6,7 +6,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface OrderService {
-    List<OrderResponse> getMyOrders(Long userId, LocalDate fromDate, LocalDate toDate);
+    List<OrderResponse> getOrdersByUser(Long userId, LocalDate fromDate, LocalDate toDate);
 
     List<OrderResponse> createOrders(Long userId, OrderCreateRequest request);
 

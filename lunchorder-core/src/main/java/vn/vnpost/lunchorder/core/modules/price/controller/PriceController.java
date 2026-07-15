@@ -1,9 +1,11 @@
 package vn.vnpost.lunchorder.core.modules.price.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import vn.vnpost.lunchorder.common.base.PageResponse;
 import vn.vnpost.lunchorder.core.modules.price.service.PriceService;
@@ -16,6 +18,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/admin/prices")
 @RequiredArgsConstructor
+@Validated
 public class PriceController {
 
     private final PriceService priceService;
@@ -44,8 +47,8 @@ public class PriceController {
     @GetMapping
     @PreAuthorize("hasAuthority('MANAGE_PRICE')")
     public ResponseEntity<PageResponse<PriceResponse>> findAll(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "1") @Min(1) int page,
+            @RequestParam(defaultValue = "10") @Min(1) int size,
             @RequestParam(required = false) String keyword) {
         return ResponseEntity.ok(priceService.findAll(page, size, keyword));
     }

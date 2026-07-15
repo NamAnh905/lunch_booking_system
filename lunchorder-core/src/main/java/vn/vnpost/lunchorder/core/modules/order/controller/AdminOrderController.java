@@ -13,6 +13,7 @@ import vn.vnpost.lunchorder.core.modules.order.service.dto.OrderStatusUpdateRequ
 import vn.vnpost.lunchorder.core.modules.order.service.dto.OrderTransferRequest;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -31,7 +32,7 @@ public class AdminOrderController {
                 .build();
     }
 
-    @PutMapping("/{id}/transfer")
+    @PatchMapping("/{id}/transfer")
     @PreAuthorize("hasAuthority('OVERRIDE_ORDERS')")
     public ApiResponse<OrderResponse> transfer(
             @PathVariable Long id,
@@ -41,7 +42,7 @@ public class AdminOrderController {
                 .build();
     }
 
-    @PutMapping("/{id}/print")
+    @PatchMapping("/{id}/print")
     @PreAuthorize("hasAuthority('MANAGE_ORDERS')")
     public ApiResponse<OrderResponse> print(
             @PathVariable Long id) {
@@ -50,7 +51,7 @@ public class AdminOrderController {
                 .build();
     }
 
-    @PutMapping("/{id}/status")
+    @PatchMapping("/{id}/status")
     @PreAuthorize("hasAuthority('MANAGE_ORDERS')")
     public ApiResponse<OrderResponse> updateStatus(
             @PathVariable Long id,
@@ -62,12 +63,12 @@ public class AdminOrderController {
 
     @GetMapping("/user/{userId}")
     @PreAuthorize("hasAuthority('VIEW_REPORTS')")
-    public ApiResponse<java.util.List<OrderResponse>> getUserOrdersInPeriod(
+    public ApiResponse<List<OrderResponse>> getUserOrdersInPeriod(
             @PathVariable Long userId,
             @RequestParam("fromDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam("toDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate) {
-        return ApiResponse.<java.util.List<OrderResponse>>builder()
-                .result(orderService.getMyOrders(userId, fromDate, toDate))
+        return ApiResponse.<List<OrderResponse>>builder()
+                .result(orderService.getOrdersByUser(userId, fromDate, toDate))
                 .build();
     }
 }

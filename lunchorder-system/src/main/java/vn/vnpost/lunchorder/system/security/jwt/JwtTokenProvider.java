@@ -3,6 +3,7 @@ package vn.vnpost.lunchorder.system.security.jwt;
 import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.SignedJWT;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -10,6 +11,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
+import vn.vnpost.lunchorder.system.modules.auth.repository.InvalidatedTokenRepository;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -19,7 +21,10 @@ import java.util.stream.Collectors;
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class JwtTokenProvider {
+
+    private final InvalidatedTokenRepository invalidatedTokenRepository;
 
     @Value("${jwt.signerKey}")
     private String signerKey;
@@ -28,7 +33,17 @@ public class JwtTokenProvider {
         try {
             SignedJWT signedJWT = SignedJWT.parse(token);
             JWSVerifier verifier = new MACVerifier(signerKey.getBytes());
-            return signedJWT.verify(verifier) && signedJWT.getJWTClaimsSet().getExpirationTime().after(new Date());
+
+            boolean signatureAndExpiryValid = signedJWT.verify(verifier)
+                    && signedJWT.getJWTClaimsSet().getExpirationTime().after(new Date());
+            if (!signatureAndExpiryValid) {
+                return false;
+            }
+
+            // Reject tokens that have been revoked (logout / rotated on refresh),
+            // even if their access-token expiry has not passed yet.
+            String jit = signedJWT.getJWTClaimsSet().getJWTID();
+            return jit == null || !invalidatedTokenRepository.existsByToken(jit);
         } catch (Exception e) {
             log.error("JWT validation failed", e);
             return false;

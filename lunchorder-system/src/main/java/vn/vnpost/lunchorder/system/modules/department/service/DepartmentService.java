@@ -18,5 +18,7 @@ public interface DepartmentService {
 
     List<DepartmentResponse> search(String keyword);
 
+    List<DepartmentResponse> getAll();
+
     PageResponse<DepartmentResponse> findAll(String keyword, int page, int size);
 }

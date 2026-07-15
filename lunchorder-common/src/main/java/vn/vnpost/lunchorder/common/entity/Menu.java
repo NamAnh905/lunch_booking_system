@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import vn.vnpost.lunchorder.common.base.BaseEntity;
+import vn.vnpost.lunchorder.common.enums.MenuType;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -18,6 +19,16 @@ public class Menu extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "name")
+    private String name;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type", length = 20, nullable = false)
+    private MenuType type = MenuType.LIST;
+
+    @Column(name = "image_url", length = 1024)
+    private String imageUrl;
 
     @Column(name = "menu_date")
     private LocalDate menuDate;

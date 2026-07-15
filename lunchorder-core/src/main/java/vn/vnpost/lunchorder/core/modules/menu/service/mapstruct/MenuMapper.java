@@ -13,8 +13,9 @@ import vn.vnpost.lunchorder.core.modules.dish.service.mapstruct.DishMapper;
 import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuCreateRequest;
 import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuResponse;
 import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuUpdateRequest;
+import vn.vnpost.lunchorder.core.modules.price.service.mapstruct.PriceMapper;
 
-@Mapper(componentModel = "spring", uses = {DishMapper.class, vn.vnpost.lunchorder.core.modules.price.service.mapstruct.PriceMapper.class}, unmappedTargetPolicy = ReportingPolicy.IGNORE)
+@Mapper(componentModel = "spring", uses = {DishMapper.class, PriceMapper.class}, unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface MenuMapper extends BaseMapper<MenuCreateRequest, MenuResponse, Menu> {
 
     @Override

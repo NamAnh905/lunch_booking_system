@@ -1,4 +1,4 @@
-package vn.vnpost.lunchorder.system.modules.excel.annotation;
+package vn.vnpost.lunchorder.tools.excel;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

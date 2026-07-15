@@ -5,11 +5,15 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import vn.vnpost.lunchorder.common.base.ApiResponse;
 import vn.vnpost.lunchorder.common.base.PageResponse;
+import vn.vnpost.lunchorder.common.exception.AppException;
+import vn.vnpost.lunchorder.common.exception.ErrorCode;
 import vn.vnpost.lunchorder.core.modules.dish.service.DishService;
 import vn.vnpost.lunchorder.core.modules.dish.service.dto.DishCreateRequest;
 import vn.vnpost.lunchorder.core.modules.dish.service.dto.DishResponse;
@@ -20,11 +24,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import vn.vnpost.lunchorder.system.modules.excel.service.ExcelExportService;
+import vn.vnpost.lunchorder.tools.excel.ExcelExportService;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/dishes")
+@Validated
+@RequestMapping("/admin/dishes")
 public class DishController {
     private final DishService dishService;
     private final ExcelExportService excelExportService;
@@ -56,13 +61,21 @@ public class DishController {
     @GetMapping
     @PreAuthorize("hasAuthority('VIEW_DISHES')")
     public ApiResponse<PageResponse<DishResponse>> findAll(
-            @RequestParam(value = "page", defaultValue = "1") int page,
-            @RequestParam(value = "size", defaultValue = "10") int size,
+            @RequestParam(value = "page", defaultValue = "1") @Min(1) int page,
+            @RequestParam(value = "size", defaultValue = "10") @Min(1) int size,
             @RequestParam(value = "keyword", required = false) String keyword,
             @RequestParam(value = "types", required = false) List<String> types,
             @RequestParam(value = "isActives", required = false) List<Boolean> isActives) {
         return ApiResponse.<PageResponse<DishResponse>>builder()
                 .result(dishService.findAll(page, size, keyword, types, isActives))
+                .build();
+    }
+
+    @GetMapping("/all")
+    @PreAuthorize("hasAuthority('VIEW_DISHES')")
+    public ApiResponse<List<DishResponse>> getAll() {
+        return ApiResponse.<List<DishResponse>>builder()
+                .result(dishService.getAll())
                 .build();
     }
 
@@ -80,7 +93,7 @@ public class DishController {
                     .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                     .body(excelData);
         } catch (IOException e) {
-            throw new RuntimeException("Failed to export Excel", e);
+            throw new AppException(ErrorCode.EXPORT_FAILED);
         }
     }
 

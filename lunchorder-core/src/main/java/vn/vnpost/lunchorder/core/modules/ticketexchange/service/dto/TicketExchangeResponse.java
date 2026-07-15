@@ -2,6 +2,7 @@ package vn.vnpost.lunchorder.core.modules.ticketexchange.service.dto;
 
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 
@@ -16,10 +17,10 @@ public class TicketExchangeResponse {
     private String sellerName;
     private Long sellerId;
     private LocalDate menuDate;
-    private java.math.BigDecimal price;
+    private BigDecimal price;
 
     public Boolean getIsSpecial() {
-        return price != null && price.compareTo(new java.math.BigDecimal("25000")) > 0;
+        return price != null && price.compareTo(new BigDecimal("25000")) > 0;
     }
     private String status;
     private Instant createdAt;

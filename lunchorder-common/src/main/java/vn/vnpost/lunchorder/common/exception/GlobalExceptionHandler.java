@@ -1,5 +1,7 @@
 package vn.vnpost.lunchorder.common.exception;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -44,6 +46,23 @@ public class GlobalExceptionHandler {
         Map<String, String> errors = new HashMap<>();
         for (FieldError error : exception.getBindingResult().getFieldErrors()) {
             errors.put(error.getField(), error.getDefaultMessage());
+        }
+
+        ApiResponse<Map<String, String>> apiResponse = ApiResponse.<Map<String, String>>builder()
+                .code(ErrorCode.INVALID_KEY.getCode())
+                .message(ErrorCode.INVALID_KEY.getMessage())
+                .result(errors)
+                .build();
+
+        return ResponseEntity.status(ErrorCode.INVALID_KEY.getStatusCode()).body(apiResponse);
+    }
+
+    @ExceptionHandler(value = ConstraintViolationException.class)
+    public ResponseEntity<ApiResponse<Map<String, String>>> handleConstraintViolationException(
+            ConstraintViolationException exception) {
+        Map<String, String> errors = new HashMap<>();
+        for (ConstraintViolation<?> violation : exception.getConstraintViolations()) {
+            errors.put(violation.getPropertyPath().toString(), violation.getMessage());
         }
 
         ApiResponse<Map<String, String>> apiResponse = ApiResponse.<Map<String, String>>builder()

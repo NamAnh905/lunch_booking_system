@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import vn.vnpost.lunchorder.common.enums.TicketExchangeStatus;
 
 import java.time.Instant;
 
@@ -25,8 +26,9 @@ public class TicketExchange {
     @JoinColumn(name = "buyer_id")
     private User buyer;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 20)
-    private String status;
+    private TicketExchangeStatus status;
 
     @Column(name = "created_at", updatable = false)
     @CreationTimestamp

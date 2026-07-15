@@ -51,7 +51,7 @@ public class FeedbackServiceImpl implements FeedbackService {
 
         // Check if user has ordered this menu (and order is not cancelled)
         Optional<Order> orderOpt = orderRepository.findByUserIdAndOrderDate(userId, menu.getMenuDate());
-        if (orderOpt.isEmpty() || OrderStatus.CANCELLED.name().equalsIgnoreCase(orderOpt.get().getStatus())) {
+        if (orderOpt.isEmpty() || orderOpt.get().getStatus() == OrderStatus.CANCELLED) {
             throw new AppException(ErrorCode.FEEDBACK_CANNOT_CREATE);
         }
 
