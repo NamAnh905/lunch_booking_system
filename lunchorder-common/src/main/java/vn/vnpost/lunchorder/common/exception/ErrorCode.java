@@ -15,6 +15,7 @@ public enum ErrorCode {
     UNAUTHENTICATED(1001, "Unauthenticated", HttpStatus.UNAUTHORIZED),
     UNAUTHORIZED(1002, "Unauthorized access", HttpStatus.FORBIDDEN),
     TOKEN_GENERATION_FAILED(1003, "Unable to generate authentication token", HttpStatus.INTERNAL_SERVER_ERROR),
+    TOO_MANY_LOGIN_ATTEMPTS(1004, "Too many login attempts. Please try again later.", HttpStatus.TOO_MANY_REQUESTS),
 
     // 2xxx: User Management
     USER_NOT_FOUND(2001, "User not found", HttpStatus.NOT_FOUND),
@@ -77,6 +78,8 @@ public enum ErrorCode {
     // 15xxx: File / Image Storage
     IMAGE_INVALID(15001, "Image file is empty or invalid", HttpStatus.BAD_REQUEST),
     IMAGE_UPLOAD_FAILED(15002, "Failed to upload image", HttpStatus.INTERNAL_SERVER_ERROR),
+    IMAGE_TYPE_NOT_ALLOWED(15003, "Image type is not allowed", HttpStatus.BAD_REQUEST),
+    IMAGE_TOO_LARGE(15004, "Image file exceeds the maximum allowed size", HttpStatus.BAD_REQUEST),
     ;
 
     private final int code;

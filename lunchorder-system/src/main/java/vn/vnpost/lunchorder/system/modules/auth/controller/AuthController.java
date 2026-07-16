@@ -31,6 +31,7 @@ import vn.vnpost.lunchorder.system.modules.auth.service.dto.TokenResponse;
 import vn.vnpost.lunchorder.system.modules.user.service.UserService;
 import vn.vnpost.lunchorder.system.modules.user.service.dto.UserResponse;
 import vn.vnpost.lunchorder.system.security.jwt.UserPrincipal;
+import vn.vnpost.lunchorder.system.security.ratelimit.LoginAttemptLimiter;
 
 @RestController
 @RequestMapping("/auth")
@@ -39,6 +40,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final UserService userService;
+    private final LoginAttemptLimiter loginAttemptLimiter;
 
     @Value("${jwt.refreshable-duration}")
     private long refreshableDuration;
@@ -91,7 +93,20 @@ public class AuthController {
             @RequestBody @Valid LoginRequest request,
             HttpServletRequest httpServletRequest,
             HttpServletResponse httpServletResponse) {
-        TokenResponse response = authService.login(request);
+        String clientIp = resolveClientIp(httpServletRequest);
+        loginAttemptLimiter.checkAllowed(clientIp, request.getUsername());
+
+        TokenResponse response;
+        try {
+            response = authService.login(request);
+        } catch (AppException e) {
+            if (e.getErrorCode() == ErrorCode.UNAUTHENTICATED) {
+                loginAttemptLimiter.recordFailure(clientIp, request.getUsername());
+            }
+            throw e;
+        }
+        loginAttemptLimiter.recordSuccess(clientIp, request.getUsername());
+
         setCookie(httpServletRequest, httpServletResponse, response.getToken(), refreshableDuration);
         return ApiResponse.<TokenResponse>builder()
                 .result(response)
@@ -160,6 +175,10 @@ public class AuthController {
                 .sameSite("Lax")
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    private String resolveClientIp(HttpServletRequest request) {
+        return request.getRemoteAddr();
     }
 
     private String getCookieValue(HttpServletRequest request, String name) {

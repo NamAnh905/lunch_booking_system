@@ -17,6 +17,12 @@ logging:
   file:
     name: logs/application.log
 
+server:
+  forward-headers-strategy: native
+  tomcat:
+    remoteip:
+      internal-proxies: ${TRUSTED_PROXY_IPS_REGEX}
+
 jwt:
   signerKey: ${JWT_SIGNER_KEY}
 

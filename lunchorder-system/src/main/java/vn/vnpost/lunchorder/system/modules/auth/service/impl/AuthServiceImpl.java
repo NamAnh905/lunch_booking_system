@@ -74,7 +74,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public TokenResponse login(LoginRequest request) {
         User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
 
         if (Boolean.FALSE.equals(user.getIsActive())) {
             throw new AppException(ErrorCode.USER_LOCKED);
