@@ -8,12 +8,5 @@ import org.springframework.web.multipart.MultipartFile;
  */
 public interface ImageStorageService {
 
-    /**
-     * Tải một ảnh lên kho lưu trữ.
-     *
-     * @param file   file ảnh nhận từ client
-     * @param folder thư mục/nhóm lưu trữ (vd: "menus")
-     * @return URL an toàn (https) của ảnh đã tải lên
-     */
     String upload(MultipartFile file, String folder);
 }

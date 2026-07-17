@@ -8,11 +8,6 @@ import vn.vnpost.lunchorder.core.modules.ordersummary.service.OrderReportMailSer
 
 import java.time.LocalDate;
 
-/**
- * Scheduler tự động gửi báo cáo tổng hợp suất ăn hàng ngày qua email.
- * Chạy lúc 14:00 mỗi ngày. Việc dựng nội dung và gửi email được ủy quyền cho
- * {@link OrderReportMailService} để tránh trùng lặp logic.
- */
 @Component
 @RequiredArgsConstructor
 @Slf4j

@@ -16,10 +16,6 @@ public class InvalidatedTokenCleanUpScheduler {
 
     private final InvalidatedTokenRepository invalidatedTokenRepository;
 
-    /**
-     * Clean up expired invalidated tokens from the database.
-     * Scheduled to run every day at 3:00 AM.
-     */
     @Scheduled(cron = "0 0 3 * * ?")
     @Transactional
     public void cleanUpExpiredTokens() {

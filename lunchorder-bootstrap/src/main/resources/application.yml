@@ -2,7 +2,7 @@ spring:
   application:
     name: LunchOrder
   profiles:
-    active: dev,local
+    active: dev
   jpa:
     open-in-view: false
   security:

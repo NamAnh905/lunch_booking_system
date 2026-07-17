@@ -16,16 +16,12 @@ package vn.vnpost.lunchorder.common.constant;
  */
 public final class PaginationConstants {
 
-    /** Trang mặc định (dự án dùng quy ước 1-indexed). */
     public static final String DEFAULT_PAGE = "1";
 
-    /** Kích thước trang mặc định. */
     public static final String DEFAULT_SIZE = "10";
 
-    /** Trang nhỏ nhất được phép. */
     public static final int MIN_PAGE = 1;
 
-    /** Kích thước trang nhỏ nhất được phép. */
     public static final int MIN_SIZE = 1;
 
     /**

@@ -40,14 +40,12 @@ public class OrderSummaryExcelHelper {
                     .createSheet("Tổng hợp suất ăn " + date.format(DateTimeFormatter.ofPattern("dd-MM-yyyy")));
             sheet.setZoom(150); // Set zoom level to 150% so it looks larger and fills the screen
 
-            // Title row
             Row titleRow = sheet.createRow(0);
             titleRow.setHeightInPoints(40);
             Cell titleCell = titleRow.createCell(0);
             titleCell.setCellValue("TỔNG HỢP SUẤT ĂN NGÀY " + date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
             titleCell.setCellStyle(styles.title);
 
-            // Header row
             Row headerRow = sheet.createRow(2);
             headerRow.setHeightInPoints(28);
             String[] headers = { "STT", "Họ tên", "Phòng ban", "Suất thường", "Suất đặc biệt", "Thành tiền" };
@@ -88,11 +86,9 @@ public class OrderSummaryExcelHelper {
                 amountCell.setCellStyle(styles.money);
             }
 
-            // Summary row
             Row summaryRow = sheet.createRow(rowIdx + 1);
             summaryRow.setHeightInPoints(24);
 
-            // Empty cells in summary row with border
             for (int i = 0; i < 2; i++) {
                 Cell cell = summaryRow.createCell(i);
                 cell.setCellStyle(styles.base);
@@ -114,7 +110,6 @@ public class OrderSummaryExcelHelper {
             totalCell.setCellValue(summary.getTotalAmount().doubleValue());
             totalCell.setCellStyle(styles.money);
 
-            // Fixed column widths (STT, Họ tên, Phòng ban, Suất thường, Suất đặc biệt, Thành tiền)
             int[] columnWidths = { 8, 25, 20, 15, 15, 15 };
             for (int i = 0; i < columnWidths.length; i++) {
                 sheet.setColumnWidth(i, columnWidths[i] * 256);
@@ -131,7 +126,6 @@ public class OrderSummaryExcelHelper {
 
     public byte[] exportMonthlyMatrixExcel(int month, int year, MonthlyOrderSummaryResponse summary,
             List<MonthlyOrderDetail> detailRecords, BigDecimal normalPrice, BigDecimal specialPrice) {
-        // Map from userId -> Map<Integer (day), String ("X" or "XX")>
         Map<Long, Map<Integer, String>> userDayMealMap = new HashMap<>();
         Map<Integer, Integer> dayNormalCountMap = new HashMap<>();
         Map<Integer, Integer> daySpecialCountMap = new HashMap<>();
@@ -176,7 +170,6 @@ public class OrderSummaryExcelHelper {
             Sheet mainSheet = workbook.createSheet("Cơm trưa tháng " + month + "-" + year);
             mainSheet.setZoom(120); // Zoom 120% for matrix view
 
-            // Title row
             Row titleRow = mainSheet.createRow(0);
             titleRow.setHeightInPoints(40);
             Cell titleCell = titleRow.createCell(0);
@@ -186,8 +179,6 @@ public class OrderSummaryExcelHelper {
             YearMonth yearMonth = YearMonth.of(year, month);
             int totalDays = yearMonth.lengthOfMonth();
 
-            // Construct headers
-            // Row 2: Headers Day of week
             Row dowRow = mainSheet.createRow(2);
             dowRow.setHeightInPoints(28);
 
@@ -220,7 +211,6 @@ public class OrderSummaryExcelHelper {
                 cell.setCellStyle(styles.header);
             }
 
-            // Row 3: Day numbers
             Row dayNumRow = mainSheet.createRow(3);
             dayNumRow.setHeightInPoints(24);
 
@@ -244,7 +234,6 @@ public class OrderSummaryExcelHelper {
                 cell.setCellStyle(styles.header);
             }
 
-            // Populate data
             int rowIdx = 4;
             for (int i = 0; i < summary.getItems().size(); i++) {
                 OrderSummaryItemResponse item = summary.getItems().get(i);
@@ -263,7 +252,6 @@ public class OrderSummaryExcelHelper {
                 cellDept.setCellValue(item.getDepartmentName() != null ? item.getDepartmentName() : "");
                 cellDept.setCellStyle(styles.data);
 
-                // Populate day registrations
                 Map<Integer, String> dayMealMap = userDayMealMap.getOrDefault(item.getUserId(), Collections.emptyMap());
                 for (int day = 1; day <= totalDays; day++) {
                     Cell cell = row.createCell(3 + day - 1);
@@ -272,7 +260,6 @@ public class OrderSummaryExcelHelper {
                     cell.setCellStyle(styles.center);
                 }
 
-                // Populate summary columns
                 Cell cellNormal = row.createCell(nextColIdx);
                 cellNormal.setCellValue(item.getNormalMealCount());
                 cellNormal.setCellStyle(styles.center);
@@ -295,7 +282,6 @@ public class OrderSummaryExcelHelper {
                 cellRemaining.setCellStyle(styles.money);
             }
 
-            // Summary row at the bottom
             Row totalRow = mainSheet.createRow(rowIdx + 1);
             totalRow.setHeightInPoints(24);
 
@@ -329,7 +315,6 @@ public class OrderSummaryExcelHelper {
                     summary.getTotalRemaining() != null ? summary.getTotalRemaining().doubleValue() : 0.0);
             totalRemainingCell.setCellStyle(styles.money);
 
-            // Fixed column widths: name/department wider, day columns and STT narrow, summary columns medium
             for (int col = 0; col < nextColIdx + 5; col++) {
                 int width;
                 if (col == 1) {
@@ -344,18 +329,15 @@ public class OrderSummaryExcelHelper {
                 mainSheet.setColumnWidth(col, width);
             }
 
-            // ================== SHEET 2: ĐẶT CƠM PMC ==================
             Sheet pmcSheet = workbook.createSheet("Đặt cơm PMC");
             pmcSheet.setZoom(120);
 
-            // Title
             Row pmcTitleRow = pmcSheet.createRow(0);
             pmcTitleRow.setHeightInPoints(40);
             Cell pmcTitleCell = pmcTitleRow.createCell(0);
             pmcTitleCell.setCellValue("ĐĂNG KÝ CƠM - PMC");
             pmcTitleCell.setCellStyle(styles.title);
 
-            // Headers
             Row pmcHeaderRow = pmcSheet.createRow(1);
             pmcHeaderRow.setHeightInPoints(28);
             String[] pmcHeaders = { "Ngày", "Suất thường", "Suất tăng cường", "TỔNG", "Số tiền cần TT cho PMC",
@@ -436,7 +418,6 @@ public class OrderSummaryExcelHelper {
                 cellNote.setCellStyle(styles.base);
             }
 
-            // Total row
             Row pmcTotalRow = pmcSheet.createRow(pmcRowIdx++);
             pmcTotalRow.setHeightInPoints(24);
 
@@ -463,7 +444,6 @@ public class OrderSummaryExcelHelper {
             Cell cellTotalNote = pmcTotalRow.createCell(5);
             cellTotalNote.setCellStyle(styles.header);
 
-            // PMC row
             Row signatureRow = pmcSheet.createRow(pmcRowIdx++);
             signatureRow.setHeightInPoints(22);
             Cell sigCell = signatureRow.createCell(0);
@@ -473,19 +453,16 @@ public class OrderSummaryExcelHelper {
                 signatureRow.createCell(i).setCellStyle(styles.base);
             }
 
-            // Fixed column widths
             for (int col = 0; col < 6; col++) {
                 int width = (col == 4) ? 25 * 256 : 12 * 256;
                 pmcSheet.setColumnWidth(col, width);
             }
 
-            // ================== SHEETS 3+: DAILY SHEETS 1 TO N ==================
             for (int day = 1; day <= totalDays; day++) {
                 String daySheetName = String.valueOf(day);
                 Sheet daySheet = workbook.createSheet(daySheetName);
                 daySheet.setZoom(120);
 
-                // Row 0
                 Row r0 = daySheet.createRow(0);
                 r0.setHeightInPoints(24);
 
@@ -501,7 +478,6 @@ public class OrderSummaryExcelHelper {
                 c0Special.setCellValue("Đặc biệt");
                 c0Special.setCellStyle(styles.header);
 
-                // Row 1
                 Row r1 = daySheet.createRow(1);
                 r1.setHeightInPoints(24);
 
@@ -561,7 +537,6 @@ public class OrderSummaryExcelHelper {
                     userRow.createCell(5).setCellStyle(styles.base);
                 }
 
-                // Fixed column widths
                 for (int col = 0; col < 6; col++) {
                     int width = (col == 1) ? 25 * 256 : 10 * 256;
                     daySheet.setColumnWidth(col, width);

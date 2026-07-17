@@ -25,7 +25,6 @@ public class OrderResponse extends BaseResponse {
     private Boolean isPrinted;
     private String errorMessage;
     
-    // User Info added for UI
     private String userName;
     private String fullName;
     private String roleName;

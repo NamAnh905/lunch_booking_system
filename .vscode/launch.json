@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-LunchOrderApplication<lunchorder-bootstrap>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "vn.vnpost.lunchorder.LunchOrderApplication",
+            "projectName": "lunchorder-bootstrap",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}

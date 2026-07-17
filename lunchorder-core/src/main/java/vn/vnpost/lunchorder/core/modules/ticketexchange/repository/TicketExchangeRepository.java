@@ -23,6 +23,8 @@ public interface TicketExchangeRepository extends JpaRepository<TicketExchange, 
 
     Optional<TicketExchange> findByOrderIdAndStatus(Long orderId, TicketExchangeStatus status);
 
+    Optional<TicketExchange> findByOrderId(Long orderId);
+
     List<TicketExchange> findByCreatedAtAfterAndStatus(Instant startDate, TicketExchangeStatus status);
 
     List<TicketExchange> findByCreatedAtAfter(Instant startDate);

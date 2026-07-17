@@ -3,6 +3,7 @@ package vn.vnpost.lunchorder.common.exception;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -39,6 +40,19 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(value = AppException.class)
     public ResponseEntity<ApiResponse<Object>> handleAppException(AppException exception) {
         return buildResponse(exception.getErrorCode());
+    }
+
+    @ExceptionHandler(value = TooManyLoginAttemptsException.class)
+    public ResponseEntity<ApiResponse<Object>> handleTooManyLoginAttempts(TooManyLoginAttemptsException exception) {
+        ErrorCode errorCode = exception.getErrorCode();
+        ApiResponse<Object> apiResponse = ApiResponse.builder()
+                .code(errorCode.getCode())
+                .message(errorCode.getMessage())
+                .result(Map.of("retryAfterSeconds", exception.getRetryAfterSeconds()))
+                .build();
+        return ResponseEntity.status(errorCode.getStatusCode())
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(exception.getRetryAfterSeconds()))
+                .body(apiResponse);
     }
 
     @ExceptionHandler(value = MethodArgumentNotValidException.class)

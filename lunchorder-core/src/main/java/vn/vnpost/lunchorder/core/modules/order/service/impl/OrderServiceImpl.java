@@ -64,20 +64,16 @@ public class OrderServiceImpl implements OrderService {
             boolean isSpecial = Boolean.TRUE.equals(item.getIsSpecial());
 
             try {
-                // Check time constraints (cutoff time is day before menu date)
                 if (cutOffPolicy.isCutOffReached(orderDate)) {
                     throw new AppException(ErrorCode.ORDER_CUTOFF_REACHED);
                 }
 
-                // Resolve the correct menu based on isSpecial flag
                 Menu menu = resolveMenu(orderDate, isSpecial);
 
-                // Check if user already ordered a meal for this date
                 Optional<Order> existingOrderOpt = orderRepository.findByUserIdAndOrderDate(userId, orderDate);
                 if (existingOrderOpt.isPresent()) {
                     Order existingOrder = existingOrderOpt.get();
                     if (existingOrder.getStatus() == OrderStatus.CANCELLED) {
-                        // Upsert: Reactivate the cancelled order instead of inserting a new record
                         existingOrder.setStatus(OrderStatus.PENDING);
                         existingOrder.setMenu(menu);
                         existingOrder.setPrice(resolveOrderPrice(menu, isSpecial));
@@ -130,16 +126,11 @@ public class OrderServiceImpl implements OrderService {
 
         return menuRepository.findByMenuDateAndPrice_Amount(orderDate, targetAmount)
                 .orElseGet(() -> {
-                    // Fallback: return the first menu of the day if no exact price match
                     List<Menu> menus = menuRepository.findByMenuDate(orderDate);
                     return menus.isEmpty() ? null : menus.get(0);
                 });
     }
 
-    /**
-     * The price charged for an order: prefer the resolved menu's own price,
-     * otherwise fall back to the policy price for the meal type.
-     */
     private BigDecimal resolveOrderPrice(Menu menu, boolean isSpecial) {
         if (menu != null && menu.getPrice() != null && menu.getPrice().getAmount() != null) {
             return menu.getPrice().getAmount();
@@ -161,12 +152,10 @@ public class OrderServiceImpl implements OrderService {
             throw new AppException(ErrorCode.ORDER_CANNOT_CANCEL);
         }
 
-        // Prevent cancellation if the ticket is listed in the market
         if (ticketExchangeRepository.findByOrderIdAndStatus(orderId, TicketExchangeStatus.OPEN).isPresent()) {
             throw new AppException(ErrorCode.ORDER_IN_MARKET);
         }
 
-        // Check time constraints (cutoff time is day before menu date)
         if (cutOffPolicy.isCutOffReached(order.getOrderDate())) {
             throw new AppException(ErrorCode.ORDER_CUTOFF_REACHED);
         }
@@ -195,7 +184,6 @@ public class OrderServiceImpl implements OrderService {
         User targetUser = userRepository.findById(request.getTargetUserId())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        // Check if target user already ordered a meal for this date
         if (orderRepository.findByUserIdAndOrderDate(request.getTargetUserId(), order.getOrderDate()).isPresent()) {
             throw new AppException(ErrorCode.ORDER_ALREADY_EXISTS);
         }

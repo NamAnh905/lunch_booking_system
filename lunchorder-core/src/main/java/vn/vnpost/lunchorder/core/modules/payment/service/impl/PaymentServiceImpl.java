@@ -35,7 +35,6 @@ public class PaymentServiceImpl implements PaymentService {
         User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        // Validate and resolve the payment method
         PaymentMethod paymentMethod;
         try {
             paymentMethod = PaymentMethod.valueOf(request.getPaymentMethod().toUpperCase());

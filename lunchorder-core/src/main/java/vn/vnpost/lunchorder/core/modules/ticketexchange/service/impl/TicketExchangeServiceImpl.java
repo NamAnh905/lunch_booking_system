@@ -2,6 +2,7 @@ package vn.vnpost.lunchorder.core.modules.ticketexchange.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
@@ -78,32 +79,30 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
         Order order = orderRepository.findById(request.getOrderId())
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
-        // Verify ownership
         if (!order.getUser().getId().equals(userId)) {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 
-        // Verify status is PENDING
         if (order.getStatus() != OrderStatus.PENDING) {
             throw new AppException(ErrorCode.ORDER_CANNOT_PASS);
         }
 
-        // Verify order is not already listed in market
-        if (ticketExchangeRepository.findByOrderIdAndStatus(order.getId(), TicketExchangeStatus.OPEN)
-                .isPresent()) {
+        Optional<TicketExchange> existingExchangeOpt = ticketExchangeRepository.findByOrderId(order.getId());
+        if (existingExchangeOpt.isPresent() && existingExchangeOpt.get().getStatus() == TicketExchangeStatus.OPEN) {
             throw new AppException(ErrorCode.ORDER_IN_MARKET);
         }
 
-        // Check time constraints
+        if (existingExchangeOpt.isPresent() && isClaimedBy(existingExchangeOpt.get(), userId)) {
+            throw new AppException(ErrorCode.ORDER_CLAIMED_CANNOT_PASS);
+        }
+
         LocalDate menuDate = order.getOrderDate();
         if (!cutOffPolicy.isWithinExchangeWindow(menuDate)) {
             throw new AppException(ErrorCode.ORDER_CANNOT_PASS);
         }
 
-        // Check if there is a cancelled/withdrawn exchange for this order, we can
-        // update it or create new
-        Optional<TicketExchange> existingExchangeOpt = ticketExchangeRepository.findByOrderIdAndStatus(order.getId(),
-                TicketExchangeStatus.CANCELLED);
+        // order_id is unique in ticket_exchange, so any prior exchange for this
+        // order (CANCELLED, MATCHED, EXPIRED) must be reused rather than reinserted
         TicketExchange ticketExchange;
         if (existingExchangeOpt.isPresent()) {
             ticketExchange = existingExchangeOpt.get();
@@ -115,7 +114,11 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
             ticketExchange.setStatus(TicketExchangeStatus.OPEN);
         }
 
-        ticketExchange = ticketExchangeRepository.save(ticketExchange);
+        try {
+            ticketExchange = ticketExchangeRepository.save(ticketExchange);
+        } catch (DataIntegrityViolationException e) {
+            throw new AppException(ErrorCode.ORDER_IN_MARKET);
+        }
         return ticketExchangeMapper.toDto(ticketExchange);
     }
 
@@ -129,12 +132,10 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
             throw new AppException(ErrorCode.EXCHANGE_NOT_OPEN);
         }
 
-        // Verify ownership of the order
         if (!ticketExchange.getOrder().getUser().getId().equals(userId)) {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 
-        // Check time constraints: Cannot withdraw a ticket for a past menu date
         LocalDate menuDate = ticketExchange.getOrder().getOrderDate();
         LocalDate today = LocalDate.now();
         if (menuDate.isBefore(today)) {
@@ -155,12 +156,10 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
             throw new AppException(ErrorCode.EXCHANGE_NOT_OPEN);
         }
 
-        // Cannot claim own ticket
         if (ticketExchange.getOrder().getUser().getId().equals(userId)) {
             throw new AppException(ErrorCode.CANNOT_CLAIM_OWN_TICKET);
         }
 
-        // Check if buyer already has an active order for this menu date
         LocalDate menuDate = ticketExchange.getOrder().getOrderDate();
         boolean hasActiveOrderOnSameDay = orderRepository.findByUserIdAndOrderDateBetween(userId, menuDate, menuDate, TicketExchangeStatus.OPEN).stream()
                 .anyMatch(o -> o.getStatus() != OrderStatus.CANCELLED);
@@ -168,7 +167,6 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
             throw new AppException(ErrorCode.ORDER_ALREADY_EXISTS);
         }
 
-        // Check time constraints: Must be within exchange time window
         if (!cutOffPolicy.isWithinExchangeWindow(menuDate)) {
             throw new AppException(ErrorCode.ORDER_CUTOFF_REACHED);
         }
@@ -176,23 +174,19 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
         User buyer = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        // Save original owner for notification
         User seller = orderRepository.findById(ticketExchange.getOrder().getId())
                 .map(Order::getUser)
                 .orElse(ticketExchange.getOrder().getUser());
 
-        // Update exchange
         ticketExchange.setStatus(TicketExchangeStatus.MATCHED);
         ticketExchange.setBuyer(buyer);
         ticketExchange = ticketExchangeRepository.save(ticketExchange);
 
-        // Update order
         Order order = ticketExchange.getOrder();
         order.setUser(buyer);
         order.setStatus(OrderStatus.PENDING);
         orderRepository.save(order);
 
-        // Send notifications
         try {
             notificationService.sendNotificationToUser(
                     seller.getId(),
@@ -228,6 +222,12 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
                 .totalElements(entityPage.getTotalElements())
                 .data(dtoList)
                 .build();
+    }
+
+    private boolean isClaimedBy(TicketExchange ticketExchange, Long userId) {
+        return ticketExchange.getStatus() == TicketExchangeStatus.MATCHED
+                && ticketExchange.getBuyer() != null
+                && ticketExchange.getBuyer().getId().equals(userId);
     }
 
     /**

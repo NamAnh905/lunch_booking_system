@@ -41,3 +41,8 @@ jwt:
   signerKey: ${JWT_SIGNER_KEY}
   valid-duration: 300
   refreshable-duration: 3600
+
+security:
+  login-rate-limit:
+    max-attempts: 5
+    window-seconds: 300

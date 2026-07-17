@@ -49,13 +49,14 @@ public class SystemConfigServiceImpl implements SystemConfigService {
     }
 
     private SystemConfig upsert(SystemConfigUpdateRequest request) {
-        SystemConfig config = systemConfigRepository.findByConfigKey(request.getConfigKey())
+        String configKey = request.getConfigKey().trim();
+        SystemConfig config = systemConfigRepository.findByConfigKey(configKey)
                 .orElseGet(() -> {
                     SystemConfig newConfig = new SystemConfig();
-                    newConfig.setConfigKey(request.getConfigKey());
+                    newConfig.setConfigKey(configKey);
                     return newConfig;
                 });
-        config.setConfigValue(request.getConfigValue());
+        config.setConfigValue(request.getConfigValue().trim());
         config.setUpdatedAt(Instant.now());
         return systemConfigRepository.save(config);
     }

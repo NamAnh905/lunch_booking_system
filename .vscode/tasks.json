@@ -1,0 +1,64 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "1. Build All Modules (Clean Install)",
+            "type": "shell",
+            "command": "mvn clean install -DskipTests",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "clear": true
+            }
+        },
+        {
+            "label": "2. Build System Module Only",
+            "type": "shell",
+            "command": "mvn clean install -pl lunchorder-system -DskipTests",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "clear": true
+            }
+        },
+        {
+            "label": "3. Build Common Module Only",
+            "type": "shell",
+            "command": "mvn install -pl lunchorder-common -DskipTests",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "clear": true
+            }
+        },
+        {
+            "label": "4. Run Application (Bootstrap)",
+            "type": "shell",
+            "command": "mvn spring-boot:run -pl lunchorder-bootstrap",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "clear": true
+            }
+        },
+        {
+            "label": "5. Build All (Clean Install)",
+            "type": "shell",
+            "command": "mvn clean install -DskipTests",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "clear": true
+            }
+        }
+    ]
+}

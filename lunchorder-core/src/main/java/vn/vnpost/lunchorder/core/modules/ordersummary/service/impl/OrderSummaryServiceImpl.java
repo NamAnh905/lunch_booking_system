@@ -62,7 +62,6 @@ public class OrderSummaryServiceImpl implements OrderSummaryService {
         BigDecimal normalPrice = mealPricePolicy.getNormalPrice();
         List<OrderSummaryRow> rows = orderSummaryRepository.findMonthlySummary(month, year, departmentId, normalPrice);
 
-        // Tổng tiền đã thanh toán nhóm theo userId
         Map<Long, BigDecimal> paidMap = new HashMap<>();
         for (Object[] row : paymentRepository.sumGroupByUserForMonth(month, year)) {
             paidMap.put((Long) row[0], (BigDecimal) row[1]);
@@ -84,7 +83,6 @@ public class OrderSummaryServiceImpl implements OrderSummaryService {
                     .build();
         }).toList();
 
-        // Daily counts for the calendar view (grouped at the database level)
         List<DailyMealCountResponse> dailyCounts = orderSummaryRepository
                 .findMonthlyDailyCounts(month, year, departmentId).stream()
                 .map(c -> DailyMealCountResponse.builder()
