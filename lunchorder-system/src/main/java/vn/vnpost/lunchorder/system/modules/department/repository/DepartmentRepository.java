@@ -4,7 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-import vn.vnpost.lunchorder.common.entity.Department;
+import vn.vnpost.lunchorder.system.modules.department.entity.Department;
 
 import java.util.List;
 import java.util.Optional;

@@ -3,7 +3,7 @@ package vn.vnpost.lunchorder.core.modules.payment.repository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import vn.vnpost.lunchorder.common.entity.Payment;
+import vn.vnpost.lunchorder.core.modules.payment.entity.Payment;
 
 import java.math.BigDecimal;
 import java.util.List;

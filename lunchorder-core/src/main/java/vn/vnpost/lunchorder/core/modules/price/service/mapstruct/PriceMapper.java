@@ -6,7 +6,7 @@ import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 import org.mapstruct.ReportingPolicy;
 import vn.vnpost.lunchorder.common.base.BaseMapper;
-import vn.vnpost.lunchorder.common.entity.Price;
+import vn.vnpost.lunchorder.core.modules.price.entity.Price;
 import vn.vnpost.lunchorder.core.modules.price.service.dto.PriceCreateRequest;
 import vn.vnpost.lunchorder.core.modules.price.service.dto.PriceResponse;
 import vn.vnpost.lunchorder.core.modules.price.service.dto.PriceUpdateRequest;

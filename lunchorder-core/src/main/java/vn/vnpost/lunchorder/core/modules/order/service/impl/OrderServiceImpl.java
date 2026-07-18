@@ -4,9 +4,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import vn.vnpost.lunchorder.common.entity.Menu;
-import vn.vnpost.lunchorder.common.entity.Order;
-import vn.vnpost.lunchorder.common.entity.User;
+import vn.vnpost.lunchorder.core.modules.menu.entity.Menu;
+import vn.vnpost.lunchorder.core.modules.order.entity.Order;
+import vn.vnpost.lunchorder.system.modules.user.entity.User;
 import vn.vnpost.lunchorder.common.exception.AppException;
 import vn.vnpost.lunchorder.common.exception.ErrorCode;
 import vn.vnpost.lunchorder.core.modules.menu.repository.MenuRepository;
@@ -14,7 +14,7 @@ import vn.vnpost.lunchorder.core.modules.order.repository.OrderRepository;
 import vn.vnpost.lunchorder.core.modules.order.service.OrderService;
 import vn.vnpost.lunchorder.core.modules.order.service.dto.*;
 import vn.vnpost.lunchorder.core.modules.order.service.mapstruct.OrderMapper;
-import vn.vnpost.lunchorder.system.modules.user.repository.UserRepository;
+import vn.vnpost.lunchorder.system.modules.user.service.UserLookupService;
 
 import vn.vnpost.lunchorder.common.enums.OrderStatus;
 import vn.vnpost.lunchorder.common.enums.TicketSource;
@@ -38,7 +38,7 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
     private final MenuRepository menuRepository;
-    private final UserRepository userRepository;
+    private final UserLookupService userLookupService;
     private final TicketExchangeRepository ticketExchangeRepository;
     private final OrderMapper orderMapper;
     private final MealPricePolicy mealPricePolicy;
@@ -51,12 +51,21 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    public List<DepartmentMemberOrderResponse> getDepartmentMealListToday(Long userId) {
+        User user = userLookupService.getById(userId);
+        if (user.getDepartment() == null) {
+            return List.of();
+        }
+        return orderRepository.findDepartmentMealListByDate(
+                user.getDepartment().getId(), LocalDate.now(), OrderStatus.CANCELLED);
+    }
+
+    @Override
     @Transactional
     public List<OrderResponse> createOrders(Long userId, OrderCreateRequest request) {
         log.debug("OrderService processing createOrders for user ID {}: payload = {}", userId, request.getOrders());
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        User user = userLookupService.getById(userId);
 
         List<OrderResponse> responses = new ArrayList<>();
         for (OrderItemRequest item : request.getOrders()) {
@@ -101,10 +110,6 @@ public class OrderServiceImpl implements OrderService {
                 order = orderRepository.save(order);
                 responses.add(orderMapper.toDto(order));
             } catch (AppException e) {
-                // Per-item business validation failure: report as FAILED and keep processing
-                // the remaining items. Unexpected technical errors are intentionally NOT caught
-                // here so they propagate to the global handler and roll back the whole batch
-                // instead of being silently masked as a "FAILED" order.
                 OrderResponse failedResponse = new OrderResponse();
                 failedResponse.setStatus("FAILED");
                 failedResponse.setErrorMessage(e.getErrorCode().getMessage());
@@ -115,12 +120,6 @@ public class OrderServiceImpl implements OrderService {
         return responses;
     }
 
-    /**
-     * Resolve the correct Menu for the given date based on the isSpecial flag.
-     * The target price (normal vs special) is resolved from {@link MealPricePolicy}
-     * so ordering always agrees with the configured active prices and reporting.
-     * Falls back to the first available menu if no exact price match is found.
-     */
     private Menu resolveMenu(LocalDate orderDate, boolean isSpecial) {
         BigDecimal targetAmount = mealPricePolicy.resolvePrice(isSpecial);
 
@@ -181,8 +180,7 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
-        User targetUser = userRepository.findById(request.getTargetUserId())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        User targetUser = userLookupService.getById(request.getTargetUserId());
 
         if (orderRepository.findByUserIdAndOrderDate(request.getTargetUserId(), order.getOrderDate()).isPresent()) {
             throw new AppException(ErrorCode.ORDER_ALREADY_EXISTS);
@@ -224,11 +222,6 @@ public class OrderServiceImpl implements OrderService {
         return orderMapper.toDto(order);
     }
 
-    /**
-     * Chuyển tham số status dạng String (nhận từ client) sang enum {@link OrderStatus}.
-     * Trả về {@code null} khi status rỗng/không truyền (để query bỏ qua điều kiện lọc);
-     * ném {@link ErrorCode#INVALID_ENUM_VALUE} khi giá trị không hợp lệ.
-     */
     private OrderStatus parseStatusOrNull(String status) {
         if (status == null || status.isBlank()) {
             return null;

@@ -19,4 +19,6 @@ public interface OrderService {
     OrderResponse printOrder(Long orderId);
 
     OrderResponse updateOrderStatus(Long orderId, OrderStatusUpdateRequest request);
+
+    List<DepartmentMemberOrderResponse> getDepartmentMealListToday(Long userId);
 }

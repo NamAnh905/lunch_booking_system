@@ -3,7 +3,7 @@ package vn.vnpost.lunchorder.core.modules.ordersummary.repository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import vn.vnpost.lunchorder.common.entity.Order;
+import vn.vnpost.lunchorder.core.modules.order.entity.Order;
 import vn.vnpost.lunchorder.common.enums.OrderStatus;
 import vn.vnpost.lunchorder.core.modules.ordersummary.repository.projection.DailyMealCount;
 import vn.vnpost.lunchorder.core.modules.ordersummary.repository.projection.MonthlyOrderDetail;

@@ -18,8 +18,8 @@ import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import vn.vnpost.lunchorder.common.base.PageResponse;
 import vn.vnpost.lunchorder.common.constant.PaginationConstants;
-import vn.vnpost.lunchorder.common.entity.Department;
-import vn.vnpost.lunchorder.common.entity.User;
+import vn.vnpost.lunchorder.system.modules.department.entity.Department;
+import vn.vnpost.lunchorder.system.modules.user.entity.User;
 import vn.vnpost.lunchorder.common.exception.AppException;
 import vn.vnpost.lunchorder.common.exception.ErrorCode;
 import vn.vnpost.lunchorder.system.modules.department.repository.DepartmentRepository;
@@ -32,7 +32,7 @@ import vn.vnpost.lunchorder.system.modules.user.service.dto.UserResponse;
 import vn.vnpost.lunchorder.system.modules.user.service.dto.UserUpdateRequest;
 import vn.vnpost.lunchorder.system.modules.user.service.mapstruct.UserMapper;
 import vn.vnpost.lunchorder.system.modules.role.repository.RoleRepository;
-import vn.vnpost.lunchorder.common.entity.Role;
+import vn.vnpost.lunchorder.system.modules.role.entity.Role;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.Set;
 import java.util.HashSet;
@@ -57,9 +57,7 @@ public class UserServiceImpl implements UserService {
             if (deptOpt.isPresent()) {
                 return deptOpt.get();
             }
-        } catch (NumberFormatException e) {
-            // Not a numeric id → fall through and resolve by code/name below
-        }
+        } catch (NumberFormatException e) {}
 
         return departmentRepository.findByCode(departmentValue)
                 .or(() -> departmentRepository.findByName(departmentValue))

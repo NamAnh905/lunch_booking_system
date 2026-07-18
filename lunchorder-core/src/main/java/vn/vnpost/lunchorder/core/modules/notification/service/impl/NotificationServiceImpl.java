@@ -7,8 +7,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import vn.vnpost.lunchorder.common.entity.Notification;
-import vn.vnpost.lunchorder.common.entity.User;
+import vn.vnpost.lunchorder.core.modules.notification.entity.Notification;
+import vn.vnpost.lunchorder.system.modules.user.entity.User;
 import vn.vnpost.lunchorder.common.exception.AppException;
 import vn.vnpost.lunchorder.common.exception.ErrorCode;
 import vn.vnpost.lunchorder.core.modules.notification.repository.NotificationRepository;
@@ -16,7 +16,7 @@ import vn.vnpost.lunchorder.core.modules.notification.service.NotificationServic
 import vn.vnpost.lunchorder.core.modules.notification.service.dto.NotificationResponse;
 import vn.vnpost.lunchorder.core.modules.notification.service.dto.NotificationSendRequest;
 import vn.vnpost.lunchorder.core.modules.notification.service.mapstruct.NotificationMapper;
-import vn.vnpost.lunchorder.system.modules.user.repository.UserRepository;
+import vn.vnpost.lunchorder.system.modules.user.service.UserLookupService;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository notificationRepository;
-    private final UserRepository userRepository;
+    private final UserLookupService userLookupService;
     private final NotificationMapper notificationMapper;
 
     @Override
@@ -71,8 +71,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public void sendNotification(NotificationSendRequest request) {
         if (request.getUserId() != null) {
-            User user = userRepository.findById(request.getUserId())
-                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+            User user = userLookupService.getById(request.getUserId());
 
             Notification notification = new Notification();
             notification.setUser(user);
@@ -99,7 +98,7 @@ public class NotificationServiceImpl implements NotificationService {
         Page<User> page;
         do {
             Pageable pageable = PageRequest.of(pageNumber, BROADCAST_BATCH_SIZE);
-            page = userRepository.findAll(pageable);
+            page = userLookupService.findAll(pageable);
 
             List<Notification> notifications = page.getContent().stream().map(user -> {
                 Notification notification = new Notification();
@@ -118,8 +117,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public void sendNotificationToUser(Long userId, String title, String content) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        User user = userLookupService.getById(userId);
 
         Notification notification = new Notification();
         notification.setUser(user);

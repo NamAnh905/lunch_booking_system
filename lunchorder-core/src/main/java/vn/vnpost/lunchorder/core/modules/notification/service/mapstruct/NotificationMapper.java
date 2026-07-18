@@ -3,7 +3,7 @@ package vn.vnpost.lunchorder.core.modules.notification.service.mapstruct;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.springframework.data.domain.Page;
-import vn.vnpost.lunchorder.common.entity.Notification;
+import vn.vnpost.lunchorder.core.modules.notification.entity.Notification;
 import vn.vnpost.lunchorder.core.modules.notification.service.dto.NotificationResponse;
 
 import java.util.List;

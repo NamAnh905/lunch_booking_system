@@ -10,6 +10,26 @@ spring:
       ddl-auto: validate
     show-sql: false
 
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      repositories:
+        enabled: false
+
+  cache:
+    type: redis
+
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+
 logging:
   level:
     root: INFO
@@ -25,6 +45,14 @@ server:
 
 jwt:
   signerKey: ${JWT_SIGNER_KEY}
+  valid-duration: ${JWT_VALID_DURATION:300}
+  refreshable-duration: ${JWT_REFRESHABLE_DURATION:3600}
+  remember-me-duration: ${JWT_REMEMBER_ME_DURATION:2592000}
+
+security:
+  login-rate-limit:
+    max-attempts: ${LOGIN_MAX_ATTEMPTS:5}
+    window-seconds: ${LOGIN_WINDOW_SECONDS:300}
 
 app:
   cors:

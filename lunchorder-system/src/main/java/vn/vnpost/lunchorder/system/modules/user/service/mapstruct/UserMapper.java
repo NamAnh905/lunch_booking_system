@@ -8,11 +8,11 @@ import org.mapstruct.NullValuePropertyMappingStrategy;
 import org.mapstruct.ReportingPolicy;
 
 import vn.vnpost.lunchorder.common.base.BaseMapper;
-import vn.vnpost.lunchorder.common.entity.User;
+import vn.vnpost.lunchorder.system.modules.user.entity.User;
 import vn.vnpost.lunchorder.system.modules.user.service.dto.UserCreateRequest;
 import vn.vnpost.lunchorder.system.modules.user.service.dto.UserResponse;
 import vn.vnpost.lunchorder.system.modules.user.service.dto.UserUpdateRequest;
-import vn.vnpost.lunchorder.common.entity.Role;
+import vn.vnpost.lunchorder.system.modules.role.entity.Role;
 import java.util.Set;
 import java.util.stream.Collectors;
 

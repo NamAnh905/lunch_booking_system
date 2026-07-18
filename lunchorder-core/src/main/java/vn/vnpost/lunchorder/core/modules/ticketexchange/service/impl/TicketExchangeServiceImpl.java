@@ -10,9 +10,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.vnpost.lunchorder.common.base.PageResponse;
 import vn.vnpost.lunchorder.common.constant.PaginationConstants;
-import vn.vnpost.lunchorder.common.entity.Order;
-import vn.vnpost.lunchorder.common.entity.TicketExchange;
-import vn.vnpost.lunchorder.common.entity.User;
+import vn.vnpost.lunchorder.core.modules.order.entity.Order;
+import vn.vnpost.lunchorder.core.modules.ticketexchange.entity.TicketExchange;
+import vn.vnpost.lunchorder.system.modules.user.entity.User;
 import vn.vnpost.lunchorder.common.exception.AppException;
 import vn.vnpost.lunchorder.common.exception.ErrorCode;
 import vn.vnpost.lunchorder.core.modules.order.repository.OrderRepository;
@@ -23,7 +23,7 @@ import vn.vnpost.lunchorder.core.modules.ticketexchange.service.dto.TicketExchan
 import vn.vnpost.lunchorder.core.modules.ticketexchange.service.dto.TicketExchangeResponse;
 import vn.vnpost.lunchorder.core.modules.notification.service.NotificationService;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.service.mapstruct.TicketExchangeMapper;
-import vn.vnpost.lunchorder.system.modules.user.repository.UserRepository;
+import vn.vnpost.lunchorder.system.modules.user.service.UserLookupService;
 
 import vn.vnpost.lunchorder.common.enums.OrderStatus;
 import vn.vnpost.lunchorder.common.enums.TicketExchangeStatus;
@@ -40,7 +40,7 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
 
     private final TicketExchangeRepository ticketExchangeRepository;
     private final OrderRepository orderRepository;
-    private final UserRepository userRepository;
+    private final UserLookupService userLookupService;
     private final TicketExchangeMapper ticketExchangeMapper;
     private final NotificationService notificationService;
     private final CutOffPolicy cutOffPolicy;
@@ -101,8 +101,6 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
             throw new AppException(ErrorCode.ORDER_CANNOT_PASS);
         }
 
-        // order_id is unique in ticket_exchange, so any prior exchange for this
-        // order (CANCELLED, MATCHED, EXPIRED) must be reused rather than reinserted
         TicketExchange ticketExchange;
         if (existingExchangeOpt.isPresent()) {
             ticketExchange = existingExchangeOpt.get();
@@ -171,8 +169,7 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
             throw new AppException(ErrorCode.ORDER_CUTOFF_REACHED);
         }
 
-        User buyer = userRepository.findById(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        User buyer = userLookupService.getById(userId);
 
         User seller = orderRepository.findById(ticketExchange.getOrder().getId())
                 .map(Order::getUser)
@@ -230,12 +227,6 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
                 && ticketExchange.getBuyer().getId().equals(userId);
     }
 
-    /**
-     * Convert the optional status filter received from the client into a
-     * {@link TicketExchangeStatus}. Returns {@code null} when no status is
-     * supplied (so the query skips the filter) and throws
-     * {@link ErrorCode#INVALID_ENUM_VALUE} for an unrecognised value.
-     */
     private TicketExchangeStatus parseStatusOrNull(String status) {
         if (status == null || status.isBlank()) {
             return null;

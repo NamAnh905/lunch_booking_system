@@ -6,7 +6,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import vn.vnpost.lunchorder.common.exception.AppException;
 import vn.vnpost.lunchorder.common.exception.ErrorCode;
-import vn.vnpost.lunchorder.common.repository.SystemConfigRepository;
+import vn.vnpost.lunchorder.core.modules.systemconfig.repository.SystemConfigRepository;
 import vn.vnpost.lunchorder.core.modules.ordersummary.service.OrderReportMailService;
 import vn.vnpost.lunchorder.core.modules.ordersummary.service.OrderSummaryService;
 import vn.vnpost.lunchorder.tools.mail.EmailService;

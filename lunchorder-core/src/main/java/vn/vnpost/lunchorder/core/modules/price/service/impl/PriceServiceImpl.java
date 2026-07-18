@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.vnpost.lunchorder.common.base.PageResponse;
 import vn.vnpost.lunchorder.common.constant.PaginationConstants;
-import vn.vnpost.lunchorder.common.entity.Price;
+import vn.vnpost.lunchorder.core.modules.price.entity.Price;
 import vn.vnpost.lunchorder.common.exception.AppException;
 import vn.vnpost.lunchorder.common.exception.ErrorCode;
 import vn.vnpost.lunchorder.core.modules.price.repository.PriceRepository;

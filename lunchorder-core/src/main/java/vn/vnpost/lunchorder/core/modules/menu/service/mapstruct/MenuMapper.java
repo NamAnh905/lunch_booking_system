@@ -8,7 +8,7 @@ import org.mapstruct.NullValuePropertyMappingStrategy;
 import org.mapstruct.ReportingPolicy;
 
 import vn.vnpost.lunchorder.common.base.BaseMapper;
-import vn.vnpost.lunchorder.common.entity.Menu;
+import vn.vnpost.lunchorder.core.modules.menu.entity.Menu;
 import vn.vnpost.lunchorder.core.modules.dish.service.mapstruct.DishMapper;
 import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuCreateRequest;
 import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuResponse;

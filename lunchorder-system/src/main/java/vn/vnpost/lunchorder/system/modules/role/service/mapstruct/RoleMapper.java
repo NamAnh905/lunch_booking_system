@@ -8,7 +8,7 @@ import org.mapstruct.NullValuePropertyMappingStrategy;
 import org.mapstruct.ReportingPolicy;
 
 import vn.vnpost.lunchorder.common.base.BaseMapper;
-import vn.vnpost.lunchorder.common.entity.Role;
+import vn.vnpost.lunchorder.system.modules.role.entity.Role;
 import vn.vnpost.lunchorder.system.modules.permission.service.mapstruct.PermissionMapper;
 import vn.vnpost.lunchorder.system.modules.role.service.dto.RoleCreateRequest;
 import vn.vnpost.lunchorder.system.modules.role.service.dto.RoleResponse;

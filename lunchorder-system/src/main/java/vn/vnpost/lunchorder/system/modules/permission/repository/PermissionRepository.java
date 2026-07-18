@@ -6,7 +6,7 @@ import java.util.Set;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import vn.vnpost.lunchorder.common.entity.Permission;
+import vn.vnpost.lunchorder.system.modules.permission.entity.Permission;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

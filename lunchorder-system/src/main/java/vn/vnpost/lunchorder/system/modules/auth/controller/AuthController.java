@@ -42,8 +42,8 @@ public class AuthController {
     private final UserService userService;
     private final LoginAttemptLimiter loginAttemptLimiter;
 
-    @Value("${jwt.refreshable-duration}")
-    private long refreshableDuration;
+    @Value("${jwt.remember-me-duration:2592000}")
+    private long rememberMeDuration;
 
     @PostMapping("/introspect")
     public ApiResponse<IntrospectResponse> introspect(@RequestBody @Valid IntrospectRequest request) {
@@ -107,7 +107,7 @@ public class AuthController {
         }
         loginAttemptLimiter.recordSuccess(clientIp, request.getUsername());
 
-        setCookie(httpServletRequest, httpServletResponse, response.getToken(), refreshableDuration);
+        setCookie(httpServletRequest, httpServletResponse, response.getToken(), cookieMaxAge(response.isRememberMe()));
         return ApiResponse.<TokenResponse>builder()
                 .result(response)
                 .build();
@@ -159,11 +159,15 @@ public class AuthController {
         serviceRequest.setToken(token);
 
         TokenResponse response = authService.refreshToken(serviceRequest);
-        setCookie(httpServletRequest, httpServletResponse, response.getToken(), refreshableDuration);
+        setCookie(httpServletRequest, httpServletResponse, response.getToken(), cookieMaxAge(response.isRememberMe()));
 
         return ApiResponse.<TokenResponse>builder()
                 .result(response)
                 .build();
+    }
+
+    private long cookieMaxAge(boolean rememberMe) {
+        return rememberMe ? rememberMeDuration : -1;
     }
 
     private void setCookie(HttpServletRequest request, HttpServletResponse response, String token, long maxAge) {

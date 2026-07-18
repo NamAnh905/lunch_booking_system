@@ -10,4 +10,5 @@ import lombok.*;
 public class TokenResponse {
     private String token;
     private boolean authenticated;
+    private boolean rememberMe;
 }

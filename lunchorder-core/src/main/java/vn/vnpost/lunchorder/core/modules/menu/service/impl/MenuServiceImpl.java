@@ -12,15 +12,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.vnpost.lunchorder.common.base.PageResponse;
 import vn.vnpost.lunchorder.common.constant.PaginationConstants;
-import vn.vnpost.lunchorder.common.entity.Dish;
-import vn.vnpost.lunchorder.common.entity.Menu;
+import vn.vnpost.lunchorder.core.modules.dish.entity.Dish;
+import vn.vnpost.lunchorder.core.modules.menu.entity.Menu;
 import vn.vnpost.lunchorder.common.enums.MenuType;
 import vn.vnpost.lunchorder.common.exception.AppException;
 import vn.vnpost.lunchorder.common.exception.ErrorCode;
 import vn.vnpost.lunchorder.core.modules.dish.repository.DishRepository;
 import vn.vnpost.lunchorder.core.modules.menu.repository.MenuRepository;
 import vn.vnpost.lunchorder.core.modules.price.repository.PriceRepository;
-import vn.vnpost.lunchorder.common.entity.Price;
+import vn.vnpost.lunchorder.core.modules.price.entity.Price;
 import vn.vnpost.lunchorder.core.modules.menu.service.MenuService;
 import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuCreateRequest;
 import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuImageCreateRequest;
@@ -82,7 +82,6 @@ public class MenuServiceImpl implements MenuService {
     @Transactional
     @CacheEvict(value = "menus", allEntries = true)
     public MenuResponse createImageMenu(MenuImageCreateRequest request) {
-        // Chuẩn hóa về Thứ Hai của tuần để mỗi tuần chỉ có một menu ảnh.
         LocalDate monday = request.getWeekDate().with(DayOfWeek.MONDAY);
 
         if (menuRepository.findByMenuDateAndType(monday, MenuType.IMAGE).isPresent()) {

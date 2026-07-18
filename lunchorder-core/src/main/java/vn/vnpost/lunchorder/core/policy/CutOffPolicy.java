@@ -3,7 +3,7 @@ package vn.vnpost.lunchorder.core.policy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import vn.vnpost.lunchorder.common.repository.SystemConfigRepository;
+import vn.vnpost.lunchorder.core.modules.systemconfig.repository.SystemConfigRepository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

@@ -14,8 +14,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import vn.vnpost.lunchorder.common.entity.InvalidatedToken;
-import vn.vnpost.lunchorder.common.entity.User;
+import vn.vnpost.lunchorder.system.modules.auth.entity.InvalidatedToken;
+import vn.vnpost.lunchorder.system.modules.user.entity.User;
 import vn.vnpost.lunchorder.common.exception.AppException;
 import vn.vnpost.lunchorder.common.exception.ErrorCode;
 import vn.vnpost.lunchorder.system.modules.auth.repository.InvalidatedTokenRepository;
@@ -58,6 +58,10 @@ public class AuthServiceImpl implements AuthService {
     @Value("${jwt.refreshable-duration}")
     protected long REFRESHABLE_DURATION;
 
+    @NonFinal
+    @Value("${jwt.remember-me-duration:2592000}")
+    protected long REMEMBER_ME_DURATION;
+
     @Override
     public IntrospectResponse introspect(IntrospectRequest request) {
         boolean isValid = true;
@@ -85,11 +89,13 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
 
-        Instant refreshExpiry = Instant.now().plus(REFRESHABLE_DURATION, ChronoUnit.SECONDS);
-        String token = generateToken(user, refreshExpiry);
+        boolean rememberMe = request.isRememberMe();
+        Instant refreshExpiry = Instant.now().plus(refreshWindow(rememberMe), ChronoUnit.SECONDS);
+        String token = generateToken(user, refreshExpiry, rememberMe);
         return TokenResponse.builder()
                 .token(token)
                 .authenticated(true)
+                .rememberMe(rememberMe)
                 .build();
     }
 
@@ -129,8 +135,6 @@ public class AuthServiceImpl implements AuthService {
                     ? Instant.ofEpochMilli(refreshExpiryMillis)
                     : signedJWT.getJWTClaimsSet().getIssueTime().toInstant().plus(REFRESHABLE_DURATION, ChronoUnit.SECONDS);
 
-            // Blacklist the old token; keep the blacklist row alive until the old token's
-            // own refresh window would have expired so it can never be reused.
             InvalidatedToken invalidatedToken = new InvalidatedToken();
             invalidatedToken.setToken(jit);
             invalidatedToken.setExpiryTime(oldRefreshExpiry);
@@ -144,13 +148,13 @@ public class AuthServiceImpl implements AuthService {
                 throw new AppException(ErrorCode.USER_LOCKED);
             }
 
-            // Sliding session: the new token gets a fresh refresh window from now,
-            // so an actively-used session is not force-logged-out on a fixed 1h boundary.
-            Instant newRefreshExpiry = Instant.now().plus(REFRESHABLE_DURATION, ChronoUnit.SECONDS);
-            String token = generateToken(user, newRefreshExpiry);
+            boolean rememberMe = Boolean.TRUE.equals(signedJWT.getJWTClaimsSet().getBooleanClaim("rememberMe"));
+            Instant newRefreshExpiry = Instant.now().plus(refreshWindow(rememberMe), ChronoUnit.SECONDS);
+            String token = generateToken(user, newRefreshExpiry, rememberMe);
             return TokenResponse.builder()
                     .token(token)
                     .authenticated(true)
+                    .rememberMe(rememberMe)
                     .build();
         } catch (AppException e) {
             throw e;
@@ -160,7 +164,11 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
-    private String generateToken(User user, Instant refreshExpiry) {
+    private long refreshWindow(boolean rememberMe) {
+        return rememberMe ? REMEMBER_ME_DURATION : REFRESHABLE_DURATION;
+    }
+
+    private String generateToken(User user, Instant refreshExpiry, boolean rememberMe) {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
 
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
@@ -174,6 +182,7 @@ public class AuthServiceImpl implements AuthService {
                 .claim("fullName", user.getFullName())
                 .claim("scope", buildScope(user))
                 .claim("refreshExpiry", refreshExpiry.toEpochMilli())
+                .claim("rememberMe", rememberMe)
                 .build();
 
         Payload payload = new Payload(jwtClaimsSet.toJSONObject());

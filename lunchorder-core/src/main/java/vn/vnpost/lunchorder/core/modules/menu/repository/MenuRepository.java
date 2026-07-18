@@ -5,7 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import vn.vnpost.lunchorder.common.entity.Menu;
+import vn.vnpost.lunchorder.core.modules.menu.entity.Menu;
 import vn.vnpost.lunchorder.common.enums.MenuType;
 
 import java.math.BigDecimal;

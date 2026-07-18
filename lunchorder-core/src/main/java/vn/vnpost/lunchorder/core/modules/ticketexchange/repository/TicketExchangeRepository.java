@@ -3,7 +3,7 @@ package vn.vnpost.lunchorder.core.modules.ticketexchange.repository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import vn.vnpost.lunchorder.common.entity.TicketExchange;
+import vn.vnpost.lunchorder.core.modules.ticketexchange.entity.TicketExchange;
 import vn.vnpost.lunchorder.common.enums.TicketExchangeStatus;
 
 import org.springframework.data.jpa.repository.EntityGraph;

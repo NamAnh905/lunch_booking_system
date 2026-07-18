@@ -3,7 +3,7 @@ package vn.vnpost.lunchorder.core.modules.dish.repository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import vn.vnpost.lunchorder.common.entity.Dish;
+import vn.vnpost.lunchorder.core.modules.dish.entity.Dish;
 
 import java.util.List;
 import java.util.Optional;

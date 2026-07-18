@@ -4,8 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import vn.vnpost.lunchorder.common.entity.Payment;
-import vn.vnpost.lunchorder.common.entity.User;
+import vn.vnpost.lunchorder.core.modules.payment.entity.Payment;
+import vn.vnpost.lunchorder.system.modules.user.entity.User;
 import vn.vnpost.lunchorder.common.enums.PaymentMethod;
 import vn.vnpost.lunchorder.common.exception.AppException;
 import vn.vnpost.lunchorder.common.exception.ErrorCode;
@@ -14,7 +14,7 @@ import vn.vnpost.lunchorder.core.modules.payment.service.PaymentService;
 import vn.vnpost.lunchorder.core.modules.payment.service.dto.PaymentCreateRequest;
 import vn.vnpost.lunchorder.core.modules.payment.service.dto.PaymentResponse;
 import vn.vnpost.lunchorder.core.modules.payment.service.mapstruct.PaymentMapper;
-import vn.vnpost.lunchorder.system.modules.user.repository.UserRepository;
+import vn.vnpost.lunchorder.system.modules.user.service.UserLookupService;
 
 import java.time.Instant;
 import java.util.List;
@@ -26,14 +26,13 @@ import java.util.List;
 public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentRepository paymentRepository;
-    private final UserRepository userRepository;
+    private final UserLookupService userLookupService;
     private final PaymentMapper paymentMapper;
 
     @Override
     @Transactional
     public PaymentResponse createPayment(PaymentCreateRequest request) {
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        User user = userLookupService.getById(request.getUserId());
 
         PaymentMethod paymentMethod;
         try {

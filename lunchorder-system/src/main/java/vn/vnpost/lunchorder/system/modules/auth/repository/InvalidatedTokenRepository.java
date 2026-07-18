@@ -1,7 +1,7 @@
 package vn.vnpost.lunchorder.system.modules.auth.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import vn.vnpost.lunchorder.common.entity.InvalidatedToken;
+import vn.vnpost.lunchorder.system.modules.auth.entity.InvalidatedToken;
 
 import java.time.Instant;
 

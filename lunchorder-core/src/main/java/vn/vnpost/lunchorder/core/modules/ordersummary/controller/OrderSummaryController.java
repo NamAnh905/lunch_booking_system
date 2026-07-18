@@ -84,8 +84,6 @@ public class OrderSummaryController {
     @ResponseStatus(HttpStatus.ACCEPTED)
     public ApiResponse<Void> triggerSendEmail(
             @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        // Gửi email chạy bất đồng bộ (@Async); trả 202 Accepted để báo yêu cầu đã được tiếp nhận.
-        // Kết quả/lỗi gửi mail được xử lý và log trong luồng nền, không trả về client.
         orderReportMailService.sendDailyReportEmail(date);
         return ApiResponse.<Void>builder()
                 .message("Email report has been queued for sending")
@@ -98,7 +96,6 @@ public class OrderSummaryController {
     public ApiResponse<Void> triggerSendMonthlyEmail(
             @RequestParam("month") @Min(1) @Max(12) int month,
             @RequestParam("year") @Min(2000) @Max(2100) int year) {
-        // Gửi email chạy bất đồng bộ (@Async); trả 202 Accepted. Xem ghi chú ở triggerSendEmail.
         orderReportMailService.sendMonthlyReportEmail(month, year);
         return ApiResponse.<Void>builder()
                 .message("Email report has been queued for sending")

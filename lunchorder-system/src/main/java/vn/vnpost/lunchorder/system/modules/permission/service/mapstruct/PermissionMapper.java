@@ -7,7 +7,7 @@ import org.mapstruct.NullValuePropertyMappingStrategy;
 import org.mapstruct.ReportingPolicy;
 
 import vn.vnpost.lunchorder.common.base.BaseMapper;
-import vn.vnpost.lunchorder.common.entity.Permission;
+import vn.vnpost.lunchorder.system.modules.permission.entity.Permission;
 import vn.vnpost.lunchorder.system.modules.permission.service.dto.PermissionCreateRequest;
 import vn.vnpost.lunchorder.system.modules.permission.service.dto.PermissionResponse;
 import vn.vnpost.lunchorder.system.modules.permission.service.dto.PermissionUpdateRequest;

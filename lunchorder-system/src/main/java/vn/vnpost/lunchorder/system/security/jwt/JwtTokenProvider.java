@@ -40,8 +40,6 @@ public class JwtTokenProvider {
                 return false;
             }
 
-            // Reject tokens that have been revoked (logout / rotated on refresh),
-            // even if their access-token expiry has not passed yet.
             String jit = signedJWT.getJWTClaimsSet().getJWTID();
             return jit == null || !invalidatedTokenRepository.existsByToken(jit);
         } catch (Exception e) {

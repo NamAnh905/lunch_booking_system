@@ -3,7 +3,7 @@ package vn.vnpost.lunchorder.core.modules.ticketexchange.service.mapstruct;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
-import vn.vnpost.lunchorder.common.entity.TicketExchange;
+import vn.vnpost.lunchorder.core.modules.ticketexchange.entity.TicketExchange;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.service.dto.TicketExchangeResponse;
 
 import java.util.List;

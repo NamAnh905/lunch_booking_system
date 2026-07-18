@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Component;
-import vn.vnpost.lunchorder.common.repository.SystemConfigRepository;
+import vn.vnpost.lunchorder.core.modules.systemconfig.repository.SystemConfigRepository;
 import vn.vnpost.lunchorder.core.modules.ordersummary.repository.projection.MonthlyOrderDetail;
 import vn.vnpost.lunchorder.core.modules.ordersummary.service.dto.DailyOrderSummaryResponse;
 import vn.vnpost.lunchorder.core.modules.ordersummary.service.dto.MonthlyOrderSummaryResponse;
@@ -151,9 +151,7 @@ public class OrderSummaryExcelHelper {
                 dayNormalCountMap.put(day, dayNormalCountMap.getOrDefault(day, 0) + 1);
             }
         }
-
-        // Invert to day -> list of item indices (preserving item order) so the per-day
-        // sheets below can be built in O(records) instead of O(days * users).
+        
         Map<Integer, List<Integer>> dayUserIndexMap = new HashMap<>();
         for (int uIdx = 0; uIdx < summary.getItems().size(); uIdx++) {
             Long userId = summary.getItems().get(uIdx).getUserId();
