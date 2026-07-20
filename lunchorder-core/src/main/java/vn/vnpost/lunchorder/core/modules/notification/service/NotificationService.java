@@ -10,5 +10,6 @@ public interface NotificationService {
     void markAsRead(Long userId, Long notificationId);
     void markAllAsRead(Long userId);
     void sendNotification(NotificationSendRequest request);
-    void sendNotificationToUser(Long userId, String title, String content);
+    NotificationResponse sendNotificationToUser(Long userId, String title, String content);
+    long countUnread(Long userId);
 }

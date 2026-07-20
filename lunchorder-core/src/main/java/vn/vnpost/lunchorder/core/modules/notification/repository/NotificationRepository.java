@@ -11,6 +11,8 @@ import vn.vnpost.lunchorder.core.modules.notification.entity.Notification;
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
     Page<Notification> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 
+    long countByUserIdAndIsReadFalse(Long userId);
+
     @Modifying
     @Query("update Notification n set n.isRead = true where n.user.id = :userId and n.isRead = false")
     void markAllAsRead(@Param("userId") Long userId);

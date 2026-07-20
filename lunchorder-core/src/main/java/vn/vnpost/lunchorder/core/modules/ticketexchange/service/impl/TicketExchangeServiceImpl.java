@@ -2,6 +2,7 @@ package vn.vnpost.lunchorder.core.modules.ticketexchange.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,7 +22,7 @@ import vn.vnpost.lunchorder.core.modules.ticketexchange.repository.TicketExchang
 import vn.vnpost.lunchorder.core.modules.ticketexchange.service.TicketExchangeService;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.service.dto.TicketExchangeCreateRequest;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.service.dto.TicketExchangeResponse;
-import vn.vnpost.lunchorder.core.modules.notification.service.NotificationService;
+import vn.vnpost.lunchorder.core.modules.ticketexchange.event.TicketExchangeClaimedEvent;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.service.mapstruct.TicketExchangeMapper;
 import vn.vnpost.lunchorder.system.modules.user.service.UserLookupService;
 
@@ -42,7 +43,7 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
     private final OrderRepository orderRepository;
     private final UserLookupService userLookupService;
     private final TicketExchangeMapper ticketExchangeMapper;
-    private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
     private final CutOffPolicy cutOffPolicy;
 
     @Override
@@ -184,20 +185,12 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
         order.setStatus(OrderStatus.PENDING);
         orderRepository.save(order);
 
-        try {
-            notificationService.sendNotificationToUser(
-                    seller.getId(),
-                    "Vé ăn trưa đã được chuyển nhượng",
-                    "Vé ăn trưa ngày " + order.getOrderDate() + " của bạn đã được " + buyer.getFullName()
-                            + " nhận thành công.");
-            notificationService.sendNotificationToUser(
-                    buyer.getId(),
-                    "Nhận vé ăn trưa thành công",
-                    "Bạn đã nhận thành công vé ăn trưa ngày " + order.getOrderDate() + " từ "
-                            + seller.getFullName() + ".");
-        } catch (Exception e) {
-            log.error("Failed to send notification for ticket exchange claim", e);
-        }
+        eventPublisher.publishEvent(new TicketExchangeClaimedEvent(
+                seller.getId(),
+                seller.getFullName(),
+                buyer.getId(),
+                buyer.getFullName(),
+                order.getOrderDate()));
 
         return ticketExchangeMapper.toDto(ticketExchange);
     }

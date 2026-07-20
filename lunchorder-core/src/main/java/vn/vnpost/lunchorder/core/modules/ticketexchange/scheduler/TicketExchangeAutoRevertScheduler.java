@@ -2,6 +2,7 @@ package vn.vnpost.lunchorder.core.modules.ticketexchange.scheduler;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -9,8 +10,8 @@ import vn.vnpost.lunchorder.core.modules.ticketexchange.entity.TicketExchange;
 import vn.vnpost.lunchorder.system.modules.user.entity.User;
 import vn.vnpost.lunchorder.common.enums.OrderStatus;
 import vn.vnpost.lunchorder.common.enums.TicketExchangeStatus;
-import vn.vnpost.lunchorder.core.modules.notification.service.NotificationService;
 import vn.vnpost.lunchorder.core.modules.order.repository.OrderRepository;
+import vn.vnpost.lunchorder.core.modules.ticketexchange.event.TicketExchangeExpiredEvent;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.repository.TicketExchangeRepository;
 import vn.vnpost.lunchorder.core.policy.CutOffPolicy;
 
@@ -38,7 +39,7 @@ public class TicketExchangeAutoRevertScheduler {
     private final TicketExchangeRepository ticketExchangeRepository;
     private final OrderRepository orderRepository;
     private final CutOffPolicy cutOffPolicy;
-    private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Scheduled(cron = "0 * * * * ?")
     @Transactional
@@ -65,16 +66,10 @@ public class TicketExchangeAutoRevertScheduler {
         log.info("Auto-revert: {} market ticket(s) expired past lock time {}", updated, lockTime);
 
         for (TicketExchange ticketExchange : expiring) {
-            try {
-                User owner = ticketExchange.getOrder().getUser();
-                notificationService.sendNotificationToUser(
-                        owner.getId(),
-                        "Vé ăn trưa đã hết hạn pass",
-                        "Vé ăn trưa ngày " + ticketExchange.getOrder().getOrderDate()
-                                + " không có ai nhận trước giờ khóa nên đã tự động thu hồi khỏi chợ. Bạn cần sử dụng vé này.");
-            } catch (Exception e) {
-                log.error("Auto-revert: failed to notify owner for exchange {}", ticketExchange.getId(), e);
-            }
+            User owner = ticketExchange.getOrder().getUser();
+            eventPublisher.publishEvent(new TicketExchangeExpiredEvent(
+                    owner.getId(),
+                    ticketExchange.getOrder().getOrderDate()));
         }
     }
 

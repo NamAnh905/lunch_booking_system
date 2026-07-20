@@ -2,12 +2,14 @@ package vn.vnpost.lunchorder.core.modules.notification.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.vnpost.lunchorder.core.modules.notification.entity.Notification;
+import vn.vnpost.lunchorder.core.modules.notification.event.NotificationCreatedEvent;
 import vn.vnpost.lunchorder.system.modules.user.entity.User;
 import vn.vnpost.lunchorder.common.exception.AppException;
 import vn.vnpost.lunchorder.common.exception.ErrorCode;
@@ -30,6 +32,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final NotificationRepository notificationRepository;
     private final UserLookupService userLookupService;
     private final NotificationMapper notificationMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public Page<NotificationResponse> getMyNotifications(Long userId, Pageable pageable) {
@@ -71,14 +74,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public void sendNotification(NotificationSendRequest request) {
         if (request.getUserId() != null) {
-            User user = userLookupService.getById(request.getUserId());
-
-            Notification notification = new Notification();
-            notification.setUser(user);
-            notification.setTitle(request.getTitle());
-            notification.setContent(request.getContent());
-            notification.setIsRead(false);
-            notificationRepository.save(notification);
+            sendNotificationToUser(request.getUserId(), request.getTitle(), request.getContent());
         } else {
             broadcastToAllUsers(request);
         }
@@ -109,14 +105,15 @@ public class NotificationServiceImpl implements NotificationService {
                 return notification;
             }).collect(Collectors.toList());
 
-            notificationRepository.saveAll(notifications);
+            List<Notification> saved = notificationRepository.saveAll(notifications);
+            saved.forEach(this::publishCreatedEvent);
             pageNumber++;
         } while (page.hasNext());
     }
 
     @Override
     @Transactional
-    public void sendNotificationToUser(Long userId, String title, String content) {
+    public NotificationResponse sendNotificationToUser(Long userId, String title, String content) {
         User user = userLookupService.getById(userId);
 
         Notification notification = new Notification();
@@ -124,6 +121,19 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setTitle(title);
         notification.setContent(content);
         notification.setIsRead(false);
-        notificationRepository.save(notification);
+        notification = notificationRepository.save(notification);
+
+        return publishCreatedEvent(notification);
+    }
+
+    @Override
+    public long countUnread(Long userId) {
+        return notificationRepository.countByUserIdAndIsReadFalse(userId);
+    }
+
+    private NotificationResponse publishCreatedEvent(Notification notification) {
+        NotificationResponse dto = notificationMapper.toDto(notification);
+        eventPublisher.publishEvent(new NotificationCreatedEvent(dto.getUserId(), dto));
+        return dto;
     }
 }
