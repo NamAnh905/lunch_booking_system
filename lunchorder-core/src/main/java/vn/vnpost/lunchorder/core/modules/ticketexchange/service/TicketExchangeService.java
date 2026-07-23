@@ -8,7 +8,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface TicketExchangeService {
-    PageResponse<TicketExchangeResponse> getOpenExchanges(Long currentUserId, int page, int size, String keyword);
+    PageResponse<TicketExchangeResponse> getOpenExchanges(int page, int size, String keyword);
 
     List<TicketExchangeResponse> getMyListedTickets(Long userId);
 

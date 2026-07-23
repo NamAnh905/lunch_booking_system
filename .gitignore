@@ -56,3 +56,6 @@ sql/db_*.sql
 
 # Environment files
 .env
+
+# Build/deploy artifacts
+*.tar

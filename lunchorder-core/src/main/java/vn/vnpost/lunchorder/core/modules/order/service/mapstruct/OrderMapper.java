@@ -20,6 +20,7 @@ public interface OrderMapper {
     @Mapping(target = "menuDate", source = "orderDate")
 
     @Mapping(target = "originalUserId", source = "originalUser.id")
+    @Mapping(target = "originalUserFullName", source = "originalUser.fullName")
     OrderResponse toDto(Order order);
 
     List<OrderResponse> toDtoList(List<Order> orders);

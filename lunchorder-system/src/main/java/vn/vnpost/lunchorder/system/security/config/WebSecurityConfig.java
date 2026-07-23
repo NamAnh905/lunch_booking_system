@@ -55,6 +55,8 @@ public class WebSecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/auth/me").authenticated()
                         .requestMatchers(HttpMethod.POST, "/auth/me/change-password").authenticated()
                         .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/v3/api-docs", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
+                        .permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .addFilterBefore(jwtAuthenticationFilter, CsrfFilter.class)

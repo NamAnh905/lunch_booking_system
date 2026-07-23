@@ -34,7 +34,7 @@ public class AdminTicketExchangeController {
     private final TicketExchangeService ticketExchangeService;
 
     @GetMapping
-    @PreAuthorize("hasAuthority('VIEW_ALL_ORDERS')")
+    @PreAuthorize("hasAuthority('MANAGE_TICKETS')")
     public ApiResponse<PageResponse<TicketExchangeResponse>> getExchanges(
             @RequestParam(name = "page", defaultValue = "1") @Min(1) int page,
             @RequestParam(name = "size", defaultValue = "10") @Min(1) int size,

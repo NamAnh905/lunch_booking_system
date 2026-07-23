@@ -16,6 +16,4 @@ public class OrderSummaryItemResponse {
     private Integer normalMealCount;
     private Integer specialMealCount;
     private BigDecimal totalAmount;
-    private BigDecimal totalPaid;
-    private BigDecimal remainingAmount;
 }

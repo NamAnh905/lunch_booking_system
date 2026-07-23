@@ -47,12 +47,12 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
     private final CutOffPolicy cutOffPolicy;
 
     @Override
-    public PageResponse<TicketExchangeResponse> getOpenExchanges(Long currentUserId, int page, int size, String keyword) {
+    public PageResponse<TicketExchangeResponse> getOpenExchanges(int page, int size, String keyword) {
         int pageNumber = Math.max(0, page - 1);
         Pageable pageable = PageRequest.of(pageNumber, PaginationConstants.clampSize(size));
 
         Page<TicketExchange> entityPage = ticketExchangeRepository.findOpenForMarket(
-                TicketExchangeStatus.OPEN, currentUserId, keyword, pageable);
+                TicketExchangeStatus.OPEN, keyword, pageable);
         List<TicketExchangeResponse> dtoList = entityPage.getContent().stream()
                 .map(ticketExchangeMapper::toDto)
                 .toList();
@@ -160,8 +160,9 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
         }
 
         LocalDate menuDate = ticketExchange.getOrder().getOrderDate();
-        boolean hasActiveOrderOnSameDay = orderRepository.findByUserIdAndOrderDateBetween(userId, menuDate, menuDate, TicketExchangeStatus.OPEN).stream()
-                .anyMatch(o -> o.getStatus() != OrderStatus.CANCELLED);
+        boolean hasActiveOrderOnSameDay = orderRepository.findByUserIdAndOrderDate(userId, menuDate)
+                .filter(o -> o.getStatus() != OrderStatus.CANCELLED)
+                .isPresent();
         if (hasActiveOrderOnSameDay) {
             throw new AppException(ErrorCode.ORDER_ALREADY_EXISTS);
         }

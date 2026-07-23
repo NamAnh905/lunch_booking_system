@@ -202,7 +202,7 @@ public class OrderSummaryExcelHelper {
             }
 
             int nextColIdx = 3 + totalDays;
-            String[] summaryHeaders = { "Tổng thường", "Tổng đặc biệt", "Tiền cần TT", "Tiền đã TT", "Còn lại" };
+            String[] summaryHeaders = { "Tổng thường", "Tổng đặc biệt", "Tiền cần TT" };
             for (int i = 0; i < summaryHeaders.length; i++) {
                 Cell cell = dowRow.createCell(nextColIdx + i);
                 cell.setCellValue(summaryHeaders[i]);
@@ -269,15 +269,6 @@ public class OrderSummaryExcelHelper {
                 Cell cellAmount = row.createCell(nextColIdx + 2);
                 cellAmount.setCellValue(item.getTotalAmount() != null ? item.getTotalAmount().doubleValue() : 0.0);
                 cellAmount.setCellStyle(styles.money);
-
-                Cell cellPaid = row.createCell(nextColIdx + 3);
-                cellPaid.setCellValue(item.getTotalPaid() != null ? item.getTotalPaid().doubleValue() : 0.0);
-                cellPaid.setCellStyle(styles.money);
-
-                Cell cellRemaining = row.createCell(nextColIdx + 4);
-                cellRemaining.setCellValue(
-                        item.getRemainingAmount() != null ? item.getRemainingAmount().doubleValue() : 0.0);
-                cellRemaining.setCellStyle(styles.money);
             }
 
             Row totalRow = mainSheet.createRow(rowIdx + 1);
@@ -304,16 +295,7 @@ public class OrderSummaryExcelHelper {
                     .setCellValue(summary.getTotalAmount() != null ? summary.getTotalAmount().doubleValue() : 0.0);
             totalAmountCell.setCellStyle(styles.money);
 
-            Cell totalPaidCell = totalRow.createCell(nextColIdx + 3);
-            totalPaidCell.setCellValue(summary.getTotalPaid() != null ? summary.getTotalPaid().doubleValue() : 0.0);
-            totalPaidCell.setCellStyle(styles.money);
-
-            Cell totalRemainingCell = totalRow.createCell(nextColIdx + 4);
-            totalRemainingCell.setCellValue(
-                    summary.getTotalRemaining() != null ? summary.getTotalRemaining().doubleValue() : 0.0);
-            totalRemainingCell.setCellStyle(styles.money);
-
-            for (int col = 0; col < nextColIdx + 5; col++) {
+            for (int col = 0; col < nextColIdx + 3; col++) {
                 int width;
                 if (col == 1) {
                     width = 25 * 256; // Name

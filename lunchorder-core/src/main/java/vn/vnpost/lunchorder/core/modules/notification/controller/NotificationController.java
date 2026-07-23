@@ -28,13 +28,13 @@ public class NotificationController {
     private final SseEmitterRegistry sseEmitterRegistry;
 
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    @PreAuthorize("hasAuthority('CREATE_OWN_ORDER')")
+    @PreAuthorize("hasAuthority('VIEW_OWN_NOTIFICATIONS')")
     public SseEmitter stream(@CurrentUserId Long userId) {
         return sseEmitterRegistry.register(userId);
     }
 
     @GetMapping("/me/unread-count")
-    @PreAuthorize("hasAuthority('CREATE_OWN_ORDER')")
+    @PreAuthorize("hasAuthority('VIEW_OWN_NOTIFICATIONS')")
     public ApiResponse<Long> getMyUnreadCount(@CurrentUserId Long userId) {
         return ApiResponse.<Long>builder()
                 .result(notificationService.countUnread(userId))
@@ -42,7 +42,7 @@ public class NotificationController {
     }
 
     @GetMapping("/me")
-    @PreAuthorize("hasAuthority('CREATE_OWN_ORDER')")
+    @PreAuthorize("hasAuthority('VIEW_OWN_NOTIFICATIONS')")
     public ApiResponse<Page<NotificationResponse>> getMyNotifications(
             @CurrentUserId Long userId,
             @RequestParam(name = "page", defaultValue = "0") @Min(0) int page,
@@ -55,7 +55,7 @@ public class NotificationController {
     }
 
     @PutMapping("/{id}/read")
-    @PreAuthorize("hasAuthority('CREATE_OWN_ORDER')")
+    @PreAuthorize("hasAuthority('VIEW_OWN_NOTIFICATIONS')")
     public ApiResponse<String> markAsRead(
             @CurrentUserId Long userId,
             @PathVariable Long id) {
@@ -66,7 +66,7 @@ public class NotificationController {
     }
 
     @PutMapping("/read-all")
-    @PreAuthorize("hasAuthority('CREATE_OWN_ORDER')")
+    @PreAuthorize("hasAuthority('VIEW_OWN_NOTIFICATIONS')")
     public ApiResponse<String> markAllAsRead(
             @CurrentUserId Long userId) {
         notificationService.markAllAsRead(userId);

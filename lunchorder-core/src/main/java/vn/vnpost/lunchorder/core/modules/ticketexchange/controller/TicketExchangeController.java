@@ -24,21 +24,20 @@ public class TicketExchangeController {
         private final TicketExchangeService ticketExchangeService;
 
         @GetMapping
-        @PreAuthorize("hasAuthority('EXCHANGE_TICKETS')")
+        @PreAuthorize("hasAuthority('CREATE_TICKET')")
         public ApiResponse<PageResponse<TicketExchangeResponse>> getMarketTickets(
-                        @CurrentUserId Long userId,
                         @RequestParam(name = "page", defaultValue = "1") @Min(1) int page,
                         @RequestParam(name = "size", defaultValue = "10") @Min(1) int size,
                         @RequestParam(name = "keyword", required = false) String keyword) {
                 PageResponse<TicketExchangeResponse> openExchanges = ticketExchangeService.getOpenExchanges(
-                                userId, page, size, keyword);
+                                page, size, keyword);
                 return ApiResponse.<PageResponse<TicketExchangeResponse>>builder()
                                 .result(openExchanges)
                                 .build();
         }
 
         @PostMapping
-        @PreAuthorize("hasAuthority('EXCHANGE_TICKETS')")
+        @PreAuthorize("hasAuthority('CREATE_TICKET')")
         public ApiResponse<TicketExchangeResponse> postTicket(
                         @CurrentUserId Long userId,
                         @RequestBody @Valid TicketExchangeCreateRequest request) {
@@ -50,7 +49,7 @@ public class TicketExchangeController {
         }
 
         @DeleteMapping("/{exchangeId}")
-        @PreAuthorize("hasAuthority('EXCHANGE_TICKETS')")
+        @PreAuthorize("hasAuthority('CREATE_TICKET')")
         public ApiResponse<String> withdrawTicket(
                         @CurrentUserId Long userId,
                         @PathVariable Long exchangeId) {
@@ -61,7 +60,7 @@ public class TicketExchangeController {
         }
 
         @PostMapping("/{exchangeId}/claim")
-        @PreAuthorize("hasAuthority('EXCHANGE_TICKETS')")
+        @PreAuthorize("hasAuthority('CLAIM_TICKET')")
         public ApiResponse<TicketExchangeResponse> claimTicket(
                         @CurrentUserId Long userId,
                         @PathVariable Long exchangeId) {
@@ -73,7 +72,7 @@ public class TicketExchangeController {
         }
 
         @GetMapping("/my-tickets")
-        @PreAuthorize("hasAuthority('EXCHANGE_TICKETS')")
+        @PreAuthorize("hasAuthority('CREATE_TICKET')")
         public ApiResponse<List<TicketExchangeResponse>> getMyListedTickets(
                         @CurrentUserId Long userId) {
                 List<TicketExchangeResponse> myList = ticketExchangeService.getMyListedTickets(userId);

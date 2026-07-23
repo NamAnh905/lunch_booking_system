@@ -16,8 +16,6 @@ public class MonthlyOrderSummaryResponse {
     private Integer totalNormalMeals;
     private Integer totalSpecialMeals;
     private BigDecimal totalAmount;
-    private BigDecimal totalPaid;
-    private BigDecimal totalRemaining;
     private List<OrderSummaryItemResponse> items;
     private List<DailyMealCountResponse> dailyCounts;
 }

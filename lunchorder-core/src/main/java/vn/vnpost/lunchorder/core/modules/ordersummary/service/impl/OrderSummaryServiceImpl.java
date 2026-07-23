@@ -13,14 +13,11 @@ import vn.vnpost.lunchorder.core.modules.ordersummary.service.dto.DailyOrderSumm
 import vn.vnpost.lunchorder.core.modules.ordersummary.service.dto.MonthlyOrderSummaryResponse;
 import vn.vnpost.lunchorder.core.modules.ordersummary.service.dto.OrderSummaryItemResponse;
 import vn.vnpost.lunchorder.core.modules.ordersummary.service.helper.OrderSummaryExcelHelper;
-import vn.vnpost.lunchorder.core.modules.payment.repository.PaymentRepository;
 import vn.vnpost.lunchorder.core.modules.price.service.MealPricePolicy;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -29,7 +26,6 @@ import java.util.Map;
 public class OrderSummaryServiceImpl implements OrderSummaryService {
 
     private final OrderSummaryRepository orderSummaryRepository;
-    private final PaymentRepository paymentRepository;
     private final OrderSummaryExcelHelper excelHelper;
     private final MealPricePolicy mealPricePolicy;
 
@@ -62,26 +58,14 @@ public class OrderSummaryServiceImpl implements OrderSummaryService {
         BigDecimal normalPrice = mealPricePolicy.getNormalPrice();
         List<OrderSummaryRow> rows = orderSummaryRepository.findMonthlySummary(month, year, departmentId, normalPrice);
 
-        Map<Long, BigDecimal> paidMap = new HashMap<>();
-        for (Object[] row : paymentRepository.sumGroupByUserForMonth(month, year)) {
-            paidMap.put((Long) row[0], (BigDecimal) row[1]);
-        }
-
-        List<OrderSummaryItemResponse> items = rows.stream().map(row -> {
-            BigDecimal totalAmount = row.getTotalAmount();
-            BigDecimal totalPaid = paidMap.getOrDefault(row.getUserId(), BigDecimal.ZERO);
-
-            return OrderSummaryItemResponse.builder()
-                    .userId(row.getUserId())
-                    .fullName(row.getFullName())
-                    .departmentName(row.getDepartmentName())
-                    .normalMealCount(row.getNormalMealCount().intValue())
-                    .specialMealCount(row.getSpecialMealCount().intValue())
-                    .totalAmount(totalAmount)
-                    .totalPaid(totalPaid)
-                    .remainingAmount(totalAmount.subtract(totalPaid))
-                    .build();
-        }).toList();
+        List<OrderSummaryItemResponse> items = rows.stream().map(row -> OrderSummaryItemResponse.builder()
+                .userId(row.getUserId())
+                .fullName(row.getFullName())
+                .departmentName(row.getDepartmentName())
+                .normalMealCount(row.getNormalMealCount().intValue())
+                .specialMealCount(row.getSpecialMealCount().intValue())
+                .totalAmount(row.getTotalAmount())
+                .build()).toList();
 
         List<DailyMealCountResponse> dailyCounts = orderSummaryRepository
                 .findMonthlyDailyCounts(month, year, departmentId).stream()
@@ -97,10 +81,6 @@ public class OrderSummaryServiceImpl implements OrderSummaryService {
                 .totalNormalMeals(items.stream().mapToInt(OrderSummaryItemResponse::getNormalMealCount).sum())
                 .totalSpecialMeals(items.stream().mapToInt(OrderSummaryItemResponse::getSpecialMealCount).sum())
                 .totalAmount(items.stream().map(OrderSummaryItemResponse::getTotalAmount)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add))
-                .totalPaid(items.stream().map(OrderSummaryItemResponse::getTotalPaid)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add))
-                .totalRemaining(items.stream().map(OrderSummaryItemResponse::getRemainingAmount)
                         .reduce(BigDecimal.ZERO, BigDecimal::add))
                 .items(items)
                 .dailyCounts(dailyCounts)

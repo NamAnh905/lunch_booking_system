@@ -5,10 +5,17 @@ import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import vn.vnpost.lunchorder.common.base.ApiResponse;
 
 import java.util.HashMap;
@@ -24,6 +31,34 @@ public class GlobalExceptionHandler {
                 .message(errorCode.getMessage())
                 .build();
         return ResponseEntity.status(errorCode.getStatusCode()).body(apiResponse);
+    }
+
+    @ExceptionHandler(value = { NoResourceFoundException.class, NoHandlerFoundException.class })
+    public ResponseEntity<ApiResponse<Object>> handleNotFound(Exception exception) {
+        log.warn("No handler found: {}", exception.getMessage());
+        return buildResponse(ErrorCode.RESOURCE_NOT_FOUND);
+    }
+
+    @ExceptionHandler(value = HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Object>> handleMethodNotSupported(
+            HttpRequestMethodNotSupportedException exception) {
+        log.warn("Method not supported: {}", exception.getMessage());
+        return buildResponse(ErrorCode.METHOD_NOT_ALLOWED);
+    }
+
+    @ExceptionHandler(value = HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Object>> handleMediaTypeNotSupported(
+            HttpMediaTypeNotSupportedException exception) {
+        log.warn("Media type not supported: {}", exception.getMessage());
+        return buildResponse(ErrorCode.UNSUPPORTED_MEDIA_TYPE);
+    }
+
+    @ExceptionHandler(value = { HttpMessageNotReadableException.class,
+            MissingServletRequestParameterException.class,
+            MethodArgumentTypeMismatchException.class })
+    public ResponseEntity<ApiResponse<Object>> handleMalformedRequest(Exception exception) {
+        log.warn("Malformed request: {}", exception.getMessage());
+        return buildResponse(ErrorCode.MALFORMED_REQUEST);
     }
 
     @ExceptionHandler(value = Exception.class)

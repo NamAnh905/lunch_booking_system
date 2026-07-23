@@ -9,6 +9,10 @@ import org.springframework.http.HttpStatusCode;
 public enum ErrorCode {
     UNCATEGORIZED_EXCEPTION(9999, "Uncategorized error", HttpStatus.INTERNAL_SERVER_ERROR),
     INVALID_KEY(9901, "Invalid key", HttpStatus.BAD_REQUEST),
+    RESOURCE_NOT_FOUND(9902, "Resource not found", HttpStatus.NOT_FOUND),
+    METHOD_NOT_ALLOWED(9903, "HTTP method not supported for this endpoint", HttpStatus.METHOD_NOT_ALLOWED),
+    MALFORMED_REQUEST(9904, "Malformed request", HttpStatus.BAD_REQUEST),
+    UNSUPPORTED_MEDIA_TYPE(9905, "Unsupported media type", HttpStatus.UNSUPPORTED_MEDIA_TYPE),
 
     UNAUTHENTICATED(1001, "Unauthenticated", HttpStatus.UNAUTHORIZED),
     UNAUTHORIZED(1002, "Unauthorized access", HttpStatus.FORBIDDEN),
@@ -53,7 +57,6 @@ public enum ErrorCode {
 
     NOTIFICATION_NOT_FOUND(11001, "Notification not found", HttpStatus.NOT_FOUND),
 
-    PAYMENT_NOT_FOUND(12001, "Payment not found", HttpStatus.NOT_FOUND),
     INVALID_ENUM_VALUE(12002, "Invalid enum value", HttpStatus.BAD_REQUEST),
 
     PRICE_NOT_FOUND(13001, "Price not found", HttpStatus.NOT_FOUND),

@@ -78,7 +78,7 @@ public class MenuController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('VIEW_ADMIN_MENUS', 'CREATE_OWN_ORDER')")
+    @PreAuthorize("hasAuthority('MANAGE_MENUS')")
     public ApiResponse<PageResponse<MenuResponse>> getMenus(
             @RequestParam(value = "page", defaultValue = "1") @Min(1) int page,
             @RequestParam(value = "size", defaultValue = "10") @Min(1) int size,
@@ -89,7 +89,7 @@ public class MenuController {
     }
 
     @GetMapping("/by-date")
-    @PreAuthorize("hasAnyAuthority('VIEW_ADMIN_MENUS', 'CREATE_OWN_ORDER')")
+    @PreAuthorize("hasAuthority('MANAGE_MENUS')")
     public ApiResponse<List<MenuResponse>> getMenusByDate(
             @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ApiResponse.<List<MenuResponse>>builder()
@@ -98,7 +98,7 @@ public class MenuController {
     }
 
     @GetMapping("/weekly")
-    @PreAuthorize("hasAnyAuthority('VIEW_ADMIN_MENUS', 'CREATE_OWN_ORDER')")
+    @PreAuthorize("hasAuthority('MANAGE_MENUS')")
     public ApiResponse<List<MenuResponse>> getWeeklyMenus(
             @RequestParam("startDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam("endDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
@@ -108,7 +108,7 @@ public class MenuController {
     }
 
     @GetMapping("/export")
-    @PreAuthorize("hasAnyAuthority('VIEW_ADMIN_MENUS', 'CREATE_OWN_ORDER')")
+    @PreAuthorize("hasAuthority('MANAGE_MENUS')")
     public ResponseEntity<byte[]> export(
             @RequestParam(value = "keyword", required = false) String keyword) {
         try {
@@ -126,7 +126,7 @@ public class MenuController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('VIEW_ADMIN_MENUS', 'CREATE_OWN_ORDER')")
+    @PreAuthorize("hasAuthority('MANAGE_MENUS')")
     public ApiResponse<MenuResponse> findById(@PathVariable Long id) {
         return ApiResponse.<MenuResponse>builder()
                 .result(menuService.findById(id))
