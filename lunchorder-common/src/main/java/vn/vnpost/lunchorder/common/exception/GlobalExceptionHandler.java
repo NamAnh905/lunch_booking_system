@@ -3,6 +3,7 @@ package vn.vnpost.lunchorder.common.exception;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -77,8 +78,27 @@ public class GlobalExceptionHandler {
         return buildResponse(exception.getErrorCode());
     }
 
+    @ExceptionHandler(value = DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Object>> handleDataIntegrityViolation(DataIntegrityViolationException exception) {
+        log.warn("Data integrity violation: {}", exception.getMessage());
+        return buildResponse(ErrorCode.DATA_CONFLICT);
+    }
+
     @ExceptionHandler(value = TooManyLoginAttemptsException.class)
     public ResponseEntity<ApiResponse<Object>> handleTooManyLoginAttempts(TooManyLoginAttemptsException exception) {
+        ErrorCode errorCode = exception.getErrorCode();
+        ApiResponse<Object> apiResponse = ApiResponse.builder()
+                .code(errorCode.getCode())
+                .message(errorCode.getMessage())
+                .result(Map.of("retryAfterSeconds", exception.getRetryAfterSeconds()))
+                .build();
+        return ResponseEntity.status(errorCode.getStatusCode())
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(exception.getRetryAfterSeconds()))
+                .body(apiResponse);
+    }
+
+    @ExceptionHandler(value = RateLimitExceededException.class)
+    public ResponseEntity<ApiResponse<Object>> handleRateLimitExceeded(RateLimitExceededException exception) {
         ErrorCode errorCode = exception.getErrorCode();
         ApiResponse<Object> apiResponse = ApiResponse.builder()
                 .code(errorCode.getCode())

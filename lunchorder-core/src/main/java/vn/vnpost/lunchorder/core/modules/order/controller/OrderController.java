@@ -8,6 +8,8 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import vn.vnpost.lunchorder.common.base.ApiResponse;
+import vn.vnpost.lunchorder.common.exception.RateLimitExceededException;
+import vn.vnpost.lunchorder.core.modules.order.ratelimit.OrderRateLimiter;
 import vn.vnpost.lunchorder.core.modules.order.service.OrderService;
 import vn.vnpost.lunchorder.core.modules.order.service.dto.DepartmentMemberOrderResponse;
 import vn.vnpost.lunchorder.core.modules.order.service.dto.OrderCreateRequest;
@@ -24,6 +26,7 @@ import java.util.List;
 public class OrderController {
 
         private final OrderService orderService;
+        private final OrderRateLimiter orderRateLimiter;
 
         @GetMapping("/me")
         @PreAuthorize("hasAuthority('CREATE_OWN_ORDER')")
@@ -50,8 +53,9 @@ public class OrderController {
         public ApiResponse<List<OrderResponse>> create(
                         @CurrentUserId Long userId,
                         @RequestBody @Valid OrderCreateRequest request) {
-                log.debug("Received request to create orders for user ID {}: orders = {}", userId,
-                                request.getOrders());
+                if (!orderRateLimiter.tryAcquire(userId)) {
+                        throw new RateLimitExceededException(orderRateLimiter.resolveRetryAfterSeconds(userId));
+                }
                 return ApiResponse.<List<OrderResponse>>builder()
                                 .result(orderService.createOrders(userId, request))
                                 .build();

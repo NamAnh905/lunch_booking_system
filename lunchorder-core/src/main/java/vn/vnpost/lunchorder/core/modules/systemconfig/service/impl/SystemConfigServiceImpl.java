@@ -45,6 +45,8 @@ public class SystemConfigServiceImpl implements SystemConfigService {
         BusinessConfigResponse response = new BusinessConfigResponse();
         response.setCutOffTime(cutOffPolicy.getCutOffTime().toString());
         response.setTicketLockTime(cutOffPolicy.getTicketLockTime().toString());
+        response.setHolidays(cutOffPolicy.getHolidays());
+        response.setMaxOrderableDate(cutOffPolicy.getMaxOrderableDate().toString());
         return response;
     }
 
@@ -56,7 +58,8 @@ public class SystemConfigServiceImpl implements SystemConfigService {
                     newConfig.setConfigKey(configKey);
                     return newConfig;
                 });
-        config.setConfigValue(request.getConfigValue().trim());
+        String configValue = request.getConfigValue();
+        config.setConfigValue(configValue == null ? "" : configValue.trim());
         config.setUpdatedAt(Instant.now());
         return systemConfigRepository.save(config);
     }

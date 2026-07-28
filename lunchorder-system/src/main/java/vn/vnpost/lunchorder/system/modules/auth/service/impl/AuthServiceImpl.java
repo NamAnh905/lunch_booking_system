@@ -28,6 +28,7 @@ import vn.vnpost.lunchorder.system.modules.auth.service.dto.RefreshRequest;
 import vn.vnpost.lunchorder.system.modules.auth.service.dto.TokenResponse;
 import vn.vnpost.lunchorder.system.modules.user.repository.UserRepository;
 
+import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -175,8 +176,7 @@ public class AuthServiceImpl implements AuthService {
                 .subject(user.getUsername())
                 .issuer("vnpost.vn")
                 .issueTime(new Date())
-                .expirationTime(new Date(
-                        Instant.now().plus(VALID_DURATION, ChronoUnit.SECONDS).toEpochMilli()))
+                .expirationTime(Date.from(Instant.now().plus(VALID_DURATION, ChronoUnit.SECONDS)))
                 .jwtID(UUID.randomUUID().toString())
                 .claim("userId", user.getId())
                 .claim("fullName", user.getFullName())
@@ -189,7 +189,7 @@ public class AuthServiceImpl implements AuthService {
         JWSObject jwsObject = new JWSObject(header, payload);
 
         try {
-            jwsObject.sign(new MACSigner(SIGNER_KEY.getBytes()));
+            jwsObject.sign(new MACSigner(SIGNER_KEY.getBytes(StandardCharsets.UTF_8)));
             return jwsObject.serialize();
         } catch (JOSEException e) {
             log.error("Cannot create token", e);

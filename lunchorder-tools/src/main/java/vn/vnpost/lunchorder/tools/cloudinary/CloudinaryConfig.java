@@ -1,4 +1,4 @@
-package vn.vnpost.lunchorder.core.infrastructure.storage.config;
+package vn.vnpost.lunchorder.tools.cloudinary;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;

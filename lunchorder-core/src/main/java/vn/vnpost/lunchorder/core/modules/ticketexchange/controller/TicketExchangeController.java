@@ -8,6 +8,8 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import vn.vnpost.lunchorder.common.base.ApiResponse;
 import vn.vnpost.lunchorder.common.base.PageResponse;
+import vn.vnpost.lunchorder.common.exception.RateLimitExceededException;
+import vn.vnpost.lunchorder.core.modules.ticketexchange.ratelimit.TicketClaimRateLimiter;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.service.TicketExchangeService;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.service.dto.TicketExchangeCreateRequest;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.service.dto.TicketExchangeResponse;
@@ -22,6 +24,7 @@ import java.util.List;
 public class TicketExchangeController {
 
         private final TicketExchangeService ticketExchangeService;
+        private final TicketClaimRateLimiter ticketClaimRateLimiter;
 
         @GetMapping
         @PreAuthorize("hasAuthority('CREATE_TICKET')")
@@ -64,6 +67,9 @@ public class TicketExchangeController {
         public ApiResponse<TicketExchangeResponse> claimTicket(
                         @CurrentUserId Long userId,
                         @PathVariable Long exchangeId) {
+                if (!ticketClaimRateLimiter.tryAcquire(userId)) {
+                        throw new RateLimitExceededException(ticketClaimRateLimiter.resolveRetryAfterSeconds(userId));
+                }
                 TicketExchangeResponse response = ticketExchangeService.claimTicket(userId,
                                 exchangeId);
                 return ApiResponse.<TicketExchangeResponse>builder()

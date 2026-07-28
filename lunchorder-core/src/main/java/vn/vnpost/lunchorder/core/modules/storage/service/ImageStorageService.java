@@ -1,4 +1,4 @@
-package vn.vnpost.lunchorder.core.infrastructure.storage.service;
+package vn.vnpost.lunchorder.core.modules.storage.service;
 
 import org.springframework.web.multipart.MultipartFile;
 

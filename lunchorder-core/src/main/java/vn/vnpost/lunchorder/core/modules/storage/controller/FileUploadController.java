@@ -1,4 +1,4 @@
-package vn.vnpost.lunchorder.core.infrastructure.storage.controller;
+package vn.vnpost.lunchorder.core.modules.storage.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -9,8 +9,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import vn.vnpost.lunchorder.common.base.ApiResponse;
-import vn.vnpost.lunchorder.core.infrastructure.storage.controller.dto.UploadResponse;
-import vn.vnpost.lunchorder.core.infrastructure.storage.service.ImageStorageService;
+import vn.vnpost.lunchorder.core.modules.storage.controller.dto.UploadResponse;
+import vn.vnpost.lunchorder.core.modules.storage.service.ImageStorageService;
 
 @RestController
 @RequiredArgsConstructor

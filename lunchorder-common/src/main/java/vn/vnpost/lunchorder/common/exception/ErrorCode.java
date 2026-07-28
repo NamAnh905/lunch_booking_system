@@ -13,11 +13,13 @@ public enum ErrorCode {
     METHOD_NOT_ALLOWED(9903, "HTTP method not supported for this endpoint", HttpStatus.METHOD_NOT_ALLOWED),
     MALFORMED_REQUEST(9904, "Malformed request", HttpStatus.BAD_REQUEST),
     UNSUPPORTED_MEDIA_TYPE(9905, "Unsupported media type", HttpStatus.UNSUPPORTED_MEDIA_TYPE),
+    DATA_CONFLICT(9906, "The request conflicts with existing data", HttpStatus.CONFLICT),
 
     UNAUTHENTICATED(1001, "Unauthenticated", HttpStatus.UNAUTHORIZED),
     UNAUTHORIZED(1002, "Unauthorized access", HttpStatus.FORBIDDEN),
     TOKEN_GENERATION_FAILED(1003, "Unable to generate authentication token", HttpStatus.INTERNAL_SERVER_ERROR),
     TOO_MANY_LOGIN_ATTEMPTS(1004, "Too many login attempts. Please try again later.", HttpStatus.TOO_MANY_REQUESTS),
+    RATE_LIMIT_EXCEEDED(1005, "Too many requests. Please try again later.", HttpStatus.TOO_MANY_REQUESTS),
 
     USER_NOT_FOUND(2001, "User not found", HttpStatus.NOT_FOUND),
     USER_LOCKED(2002, "User account is locked", HttpStatus.FORBIDDEN),
@@ -48,12 +50,17 @@ public enum ErrorCode {
     ORDER_IN_MARKET(7005, "Order is currently listed in the market", HttpStatus.BAD_REQUEST),
     ORDER_CANNOT_PASS(7006, "Order cannot be passed", HttpStatus.BAD_REQUEST),
     ORDER_CLAIMED_CANNOT_PASS(7007, "A ticket claimed from the market cannot be passed again", HttpStatus.BAD_REQUEST),
+    ORDER_DATE_NOT_ALLOWED(7008, "Meals cannot be ordered on weekends or holidays", HttpStatus.BAD_REQUEST),
+    ORDER_DATE_TOO_FAR(7009, "Order date is beyond the allowed booking window", HttpStatus.BAD_REQUEST),
 
     TICKET_NOT_FOUND(9001, "Ticket not found", HttpStatus.NOT_FOUND),
 
     EXCHANGE_NOT_FOUND(10001, "Exchange not found", HttpStatus.NOT_FOUND),
     EXCHANGE_NOT_OPEN(10002, "Exchange is not open", HttpStatus.BAD_REQUEST),
     CANNOT_CLAIM_OWN_TICKET(10003, "Cannot claim your own ticket", HttpStatus.BAD_REQUEST),
+    EXCHANGE_ALREADY_CLAIMED(10004, "This ticket has already been claimed by another user", HttpStatus.BAD_REQUEST),
+    USER_TICKET_ON_MARKET(10005, "You are listing a ticket on the market and cannot claim another one", HttpStatus.BAD_REQUEST),
+    USER_ALREADY_HAS_TICKET(10006, "You already have an upcoming meal ticket and cannot claim another one", HttpStatus.BAD_REQUEST),
 
     NOTIFICATION_NOT_FOUND(11001, "Notification not found", HttpStatus.NOT_FOUND),
 

@@ -26,6 +26,14 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
        Optional<Order> findByUserIdAndOrderDate(Long userId, LocalDate orderDate);
 
+       @Query("SELECT COUNT(o) > 0 FROM Order o " +
+                     "WHERE o.user.id = :userId AND o.orderDate >= :fromDate AND o.status <> :excludedStatus " +
+                     "AND NOT EXISTS (SELECT 1 FROM TicketExchange te WHERE te.order.id = o.id AND te.status = :openStatus)")
+       boolean existsActiveOrderNotOnMarket(@Param("userId") Long userId,
+                     @Param("fromDate") LocalDate fromDate,
+                     @Param("excludedStatus") OrderStatus excludedStatus,
+                     @Param("openStatus") TicketExchangeStatus openStatus);
+
        @Query("SELECT o FROM Order o " +
                      "LEFT JOIN FETCH o.menu " +
                      "LEFT JOIN FETCH o.user u " +

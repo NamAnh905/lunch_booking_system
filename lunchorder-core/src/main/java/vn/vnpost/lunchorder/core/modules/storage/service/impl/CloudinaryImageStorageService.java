@@ -1,4 +1,4 @@
-package vn.vnpost.lunchorder.core.infrastructure.storage.service.impl;
+package vn.vnpost.lunchorder.core.modules.storage.service.impl;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import vn.vnpost.lunchorder.common.exception.AppException;
 import vn.vnpost.lunchorder.common.exception.ErrorCode;
-import vn.vnpost.lunchorder.core.infrastructure.storage.service.ImageStorageService;
+import vn.vnpost.lunchorder.core.modules.storage.service.ImageStorageService;
 
 import java.util.Map;
 import java.util.Set;

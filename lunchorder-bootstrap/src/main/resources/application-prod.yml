@@ -53,6 +53,20 @@ security:
   login-rate-limit:
     max-attempts: ${LOGIN_MAX_ATTEMPTS:5}
     window-seconds: ${LOGIN_WINDOW_SECONDS:300}
+  global-rate-limit:
+    enabled: ${GLOBAL_RATE_LIMIT_ENABLED:true}
+    read:
+      max-requests: ${GLOBAL_RATE_LIMIT_READ_MAX_REQUESTS:400}
+      window-seconds: ${GLOBAL_RATE_LIMIT_READ_WINDOW_SECONDS:60}
+    write:
+      max-requests: ${GLOBAL_RATE_LIMIT_WRITE_MAX_REQUESTS:150}
+      window-seconds: ${GLOBAL_RATE_LIMIT_WRITE_WINDOW_SECONDS:60}
+  order-rate-limit:
+    max-requests: ${ORDER_RATE_LIMIT_MAX_REQUESTS:3}
+    window-seconds: ${ORDER_RATE_LIMIT_WINDOW_SECONDS:5}
+  ticket-claim-rate-limit:
+    max-requests: ${TICKET_CLAIM_RATE_LIMIT_MAX_REQUESTS:3}
+    window-seconds: ${TICKET_CLAIM_RATE_LIMIT_WINDOW_SECONDS:5}
 
 springdoc:
   api-docs:

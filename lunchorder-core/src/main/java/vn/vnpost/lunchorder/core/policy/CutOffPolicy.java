@@ -5,9 +5,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import vn.vnpost.lunchorder.core.modules.systemconfig.repository.SystemConfigRepository;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.YearMonth;
+import java.time.format.DateTimeParseException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -19,6 +27,10 @@ public class CutOffPolicy {
 
     private static final String TICKET_LOCK_TIME_KEY = "TICKET_LOCK_TIME";
     private static final LocalTime DEFAULT_TICKET_LOCK_TIME = LocalTime.of(11, 00);
+
+    private static final String HOLIDAYS_KEY = "HOLIDAYS";
+
+    private static final int MAX_ADVANCE_MONTHS = 3;
 
     private final SystemConfigRepository systemConfigRepository;
 
@@ -60,5 +72,39 @@ public class CutOffPolicy {
         LocalDateTime windowStart = menuDate.minusDays(1).atTime(getCutOffTime());
         LocalDateTime windowEnd = menuDate.atTime(getTicketLockTime());
         return !now.isBefore(windowStart) && !now.isAfter(windowEnd);
+    }
+
+    public List<String> getHolidays() {
+        return systemConfigRepository.findByConfigKey(HOLIDAYS_KEY)
+                .map(config -> Arrays.stream(config.getConfigValue().split(","))
+                        .map(String::trim)
+                        .filter(date -> !date.isEmpty())
+                        .toList())
+                .orElse(List.of());
+    }
+
+    public Set<LocalDate> getHolidayDates() {
+        return getHolidays().stream()
+                .map(this::parseHolidayOrNull)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+    }
+
+    private LocalDate parseHolidayOrNull(String rawValue) {
+        try {
+            return LocalDate.parse(rawValue);
+        } catch (DateTimeParseException e) {
+            log.error("Bỏ qua giá trị ngày lễ không hợp lệ trong cấu hình {}: {}", HOLIDAYS_KEY, rawValue);
+            return null;
+        }
+    }
+
+    public boolean isWeekend(LocalDate menuDate) {
+        DayOfWeek dayOfWeek = menuDate.getDayOfWeek();
+        return dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY;
+    }
+
+    public LocalDate getMaxOrderableDate() {
+        return YearMonth.now().plusMonths(MAX_ADVANCE_MONTHS).atEndOfMonth();
     }
 }

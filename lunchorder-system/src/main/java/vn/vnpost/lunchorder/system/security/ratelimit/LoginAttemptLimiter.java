@@ -9,11 +9,6 @@ import vn.vnpost.lunchorder.common.exception.TooManyLoginAttemptsException;
 
 import java.util.concurrent.TimeUnit;
 
-/**
- * Chặn brute-force / credential stuffing trên endpoint đăng nhập bằng cách đếm
- * số lần đăng nhập sai theo cặp (IP, username) trong một cửa sổ thời gian, lưu
- * trạng thái đếm trên Redis để hoạt động đúng khi có nhiều instance backend.
- */
 @Component
 @RequiredArgsConstructor
 public class LoginAttemptLimiter {

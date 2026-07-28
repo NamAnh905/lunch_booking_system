@@ -151,12 +151,26 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
         TicketExchange ticketExchange = ticketExchangeRepository.findByIdForUpdate(exchangeId)
                 .orElseThrow(() -> new AppException(ErrorCode.EXCHANGE_NOT_FOUND));
 
+        if (ticketExchange.getStatus() == TicketExchangeStatus.MATCHED) {
+            throw new AppException(ErrorCode.EXCHANGE_ALREADY_CLAIMED);
+        }
+
         if (ticketExchange.getStatus() != TicketExchangeStatus.OPEN) {
             throw new AppException(ErrorCode.EXCHANGE_NOT_OPEN);
         }
 
         if (ticketExchange.getOrder().getUser().getId().equals(userId)) {
             throw new AppException(ErrorCode.CANNOT_CLAIM_OWN_TICKET);
+        }
+
+        LocalDate today = LocalDate.now();
+
+        if (ticketExchangeRepository.existsActiveListingBySeller(userId, TicketExchangeStatus.OPEN, today)) {
+            throw new AppException(ErrorCode.USER_TICKET_ON_MARKET);
+        }
+
+        if (orderRepository.existsActiveOrderNotOnMarket(userId, today, OrderStatus.CANCELLED, TicketExchangeStatus.OPEN)) {
+            throw new AppException(ErrorCode.USER_ALREADY_HAS_TICKET);
         }
 
         LocalDate menuDate = ticketExchange.getOrder().getOrderDate();

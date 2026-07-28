@@ -1,4 +1,4 @@
-package vn.vnpost.lunchorder.core.infrastructure.storage.config;
+package vn.vnpost.lunchorder.tools.cloudinary;
 
 import lombok.Getter;
 import lombok.Setter;

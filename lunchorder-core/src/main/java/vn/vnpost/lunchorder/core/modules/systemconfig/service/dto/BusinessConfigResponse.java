@@ -3,6 +3,8 @@ package vn.vnpost.lunchorder.core.modules.systemconfig.service.dto;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
+
 /**
  * Read-only subset of {@code system_config} exposed to every authenticated
  * user (not just admins) so client-side cutoff/lock messaging stays in sync
@@ -13,4 +15,6 @@ import lombok.Setter;
 public class BusinessConfigResponse {
     private String cutOffTime;
     private String ticketLockTime;
+    private List<String> holidays;
+    private String maxOrderableDate;
 }

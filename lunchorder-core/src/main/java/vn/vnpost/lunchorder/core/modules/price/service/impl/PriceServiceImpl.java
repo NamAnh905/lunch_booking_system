@@ -8,8 +8,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.vnpost.lunchorder.common.audit.AuditEvent;
 import vn.vnpost.lunchorder.common.base.PageResponse;
 import vn.vnpost.lunchorder.common.constant.PaginationConstants;
 import vn.vnpost.lunchorder.core.modules.price.entity.Price;
@@ -32,6 +34,7 @@ public class PriceServiceImpl implements PriceService {
 
     private final PriceRepository priceRepository;
     private final PriceMapper priceMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -42,6 +45,7 @@ public class PriceServiceImpl implements PriceService {
         }
         Price price = priceMapper.toEntity(request);
         price = priceRepository.save(price);
+        eventPublisher.publishEvent(new AuditEvent("CREATE_PRICE", "Price", price.getId(), request));
         return priceMapper.toDto(price);
     }
 
@@ -54,6 +58,7 @@ public class PriceServiceImpl implements PriceService {
 
         priceMapper.update(request, price);
         price = priceRepository.save(price);
+        eventPublisher.publishEvent(new AuditEvent("UPDATE_PRICE", "Price", id, request));
         return priceMapper.toDto(price);
     }
 
@@ -64,6 +69,7 @@ public class PriceServiceImpl implements PriceService {
         Price price = priceRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.PRICE_NOT_FOUND));
         priceRepository.delete(price);
+        eventPublisher.publishEvent(new AuditEvent("DELETE_PRICE", "Price", id, null));
     }
 
     @Override

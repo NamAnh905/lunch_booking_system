@@ -10,6 +10,5 @@ public class SystemConfigUpdateRequest {
     @NotBlank(message = "Khóa cấu hình không được để trống.")
     private String configKey;
 
-    @NotBlank(message = "Giá trị cấu hình không được để trống.")
     private String configValue;
 }

@@ -25,6 +25,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.OncePerRequestFilter;
 import vn.vnpost.lunchorder.system.security.jwt.JwtAuthenticationEntryPoint;
 import vn.vnpost.lunchorder.system.security.jwt.JwtAuthenticationFilter;
+import vn.vnpost.lunchorder.system.security.ratelimit.GlobalRateLimitFilter;
 
 import java.io.IOException;
 import java.util.List;
@@ -37,6 +38,7 @@ public class WebSecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final GlobalRateLimitFilter globalRateLimitFilter;
 
     @Value("${app.cors.allowed-origins}")
     private List<String> allowedOrigins;
@@ -60,6 +62,7 @@ public class WebSecurityConfig {
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .addFilterBefore(jwtAuthenticationFilter, CsrfFilter.class)
+                .addFilterBefore(globalRateLimitFilter, JwtAuthenticationFilter.class)
                 .addFilterAfter(csrfCookieFilter(), CsrfFilter.class);
         return http.build();
     }
@@ -102,6 +105,6 @@ public class WebSecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(12);
+        return new BCryptPasswordEncoder(10);
     }
 }

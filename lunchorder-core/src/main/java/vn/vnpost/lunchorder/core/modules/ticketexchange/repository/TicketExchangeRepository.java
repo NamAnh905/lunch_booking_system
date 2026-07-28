@@ -53,6 +53,12 @@ public interface TicketExchangeRepository extends JpaRepository<TicketExchange, 
                                       @Param("keyword") String keyword,
                                       Pageable pageable);
 
+    @Query("SELECT COUNT(t) > 0 FROM TicketExchange t " +
+           "WHERE t.order.user.id = :userId AND t.status = :status AND t.order.orderDate >= :fromDate")
+    boolean existsActiveListingBySeller(@Param("userId") Long userId,
+                                        @Param("status") TicketExchangeStatus status,
+                                        @Param("fromDate") LocalDate fromDate);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select t from TicketExchange t where t.id = :id")
     Optional<TicketExchange> findByIdForUpdate(@Param("id") Long id);

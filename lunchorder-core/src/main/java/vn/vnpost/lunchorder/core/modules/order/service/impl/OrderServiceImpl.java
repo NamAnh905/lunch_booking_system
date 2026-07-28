@@ -29,6 +29,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -43,6 +44,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderMapper orderMapper;
     private final MealPricePolicy mealPricePolicy;
     private final CutOffPolicy cutOffPolicy;
+    private final OrderItemPersister orderItemPersister;
 
     @Override
     public List<OrderResponse> getOrdersByUser(Long userId, LocalDate fromDate, LocalDate toDate) {
@@ -63,9 +65,10 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public List<OrderResponse> createOrders(Long userId, OrderCreateRequest request) {
-        log.debug("OrderService processing createOrders for user ID {}: payload = {}", userId, request.getOrders());
-
         User user = userLookupService.getById(userId);
+
+        Set<LocalDate> holidays = cutOffPolicy.getHolidayDates();
+        LocalDate maxOrderableDate = cutOffPolicy.getMaxOrderableDate();
 
         List<OrderResponse> responses = new ArrayList<>();
         for (OrderItemRequest item : request.getOrders()) {
@@ -73,6 +76,14 @@ public class OrderServiceImpl implements OrderService {
             boolean isSpecial = Boolean.TRUE.equals(item.getIsSpecial());
 
             try {
+                if (cutOffPolicy.isWeekend(orderDate) || holidays.contains(orderDate)) {
+                    throw new AppException(ErrorCode.ORDER_DATE_NOT_ALLOWED);
+                }
+
+                if (orderDate.isAfter(maxOrderableDate)) {
+                    throw new AppException(ErrorCode.ORDER_DATE_TOO_FAR);
+                }
+
                 if (cutOffPolicy.isCutOffReached(orderDate)) {
                     throw new AppException(ErrorCode.ORDER_CUTOFF_REACHED);
                 }
@@ -89,7 +100,6 @@ public class OrderServiceImpl implements OrderService {
                         existingOrder.setTicketSource(TicketSource.STANDARD);
                         existingOrder.setIsPrinted(false);
                         existingOrder.setOriginalUser(user);
-                        existingOrder = orderRepository.save(existingOrder);
                         responses.add(orderMapper.toDto(existingOrder));
                         continue;
                     } else {
@@ -107,7 +117,7 @@ public class OrderServiceImpl implements OrderService {
                 order.setOriginalUser(user);
                 order.setIsPrinted(false);
 
-                order = orderRepository.save(order);
+                order = orderItemPersister.persist(order);
                 responses.add(orderMapper.toDto(order));
             } catch (AppException e) {
                 OrderResponse failedResponse = new OrderResponse();
@@ -189,7 +199,7 @@ public class OrderServiceImpl implements OrderService {
         order.setUser(targetUser);
         order.setStatus(OrderStatus.TRANSFERRED);
 
-        order = orderRepository.save(order);
+        order = orderItemPersister.persist(order);
         return orderMapper.toDto(order);
     }
 

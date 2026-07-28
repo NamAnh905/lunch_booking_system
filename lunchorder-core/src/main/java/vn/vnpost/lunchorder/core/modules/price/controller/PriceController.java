@@ -8,6 +8,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import vn.vnpost.lunchorder.common.base.PageResponse;
+import vn.vnpost.lunchorder.common.base.ApiResponse;
 import vn.vnpost.lunchorder.core.modules.price.service.PriceService;
 import vn.vnpost.lunchorder.core.modules.price.service.dto.PriceCreateRequest;
 import vn.vnpost.lunchorder.core.modules.price.service.dto.PriceResponse;
@@ -25,42 +26,54 @@ public class PriceController {
 
     @PostMapping
     @PreAuthorize("hasAuthority('MANAGE_PRICE')")
-    public ResponseEntity<PriceResponse> create(@RequestBody @Valid PriceCreateRequest request) {
-        return ResponseEntity.ok(priceService.create(request));
+    public ApiResponse<PriceResponse> createPrice(@RequestBody @Valid PriceCreateRequest request) {
+        return ApiResponse.<PriceResponse>builder()
+                .result(priceService.create(request))
+                .build();
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('MANAGE_PRICE')")
-    public ResponseEntity<PriceResponse> update(
+    public ApiResponse<PriceResponse> update(
             @PathVariable Long id,
             @RequestBody @Valid PriceUpdateRequest request) {
-        return ResponseEntity.ok(priceService.update(id, request));
+        return ApiResponse.<PriceResponse>builder()
+                .result(priceService.update(id, request))
+                .build();
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('MANAGE_PRICE')")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ApiResponse<Void> delete(@PathVariable Long id) {
         priceService.delete(id);
-        return ResponseEntity.ok().build();
+        return ApiResponse.<Void>builder()
+                .build();
     }
 
     @GetMapping
     @PreAuthorize("hasAuthority('MANAGE_PRICE')")
-    public ResponseEntity<PageResponse<PriceResponse>> findAll(
+    public ApiResponse<PageResponse<PriceResponse>> findAll(
             @RequestParam(defaultValue = "1") @Min(1) int page,
             @RequestParam(defaultValue = "10") @Min(1) int size,
             @RequestParam(required = false) String keyword) {
-        return ResponseEntity.ok(priceService.findAll(page, size, keyword));
+        return ApiResponse.<PageResponse<PriceResponse>>builder()
+                .result(priceService.findAll(page, size, keyword))
+                .build();
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('MANAGE_PRICE')")
-    public ResponseEntity<PriceResponse> findById(@PathVariable Long id) {
-        return ResponseEntity.ok(priceService.findById(id));
+    public ApiResponse<PriceResponse> findById(@PathVariable Long id) {
+        return ApiResponse.<PriceResponse>builder()
+                .result(priceService.findById(id))
+                .build();
     }
 
     @GetMapping("/active")
-    public ResponseEntity<List<PriceResponse>> getActivePrices() {
-        return ResponseEntity.ok(priceService.getActivePrices());
+    @PreAuthorize("hasAuthority('MANAGE_PRICE')")
+    public ApiResponse<List<PriceResponse>> getActivePrices() {
+        return ApiResponse.<List<PriceResponse>>builder()
+                .result(priceService.getActivePrices())
+                .build();
     }
 }

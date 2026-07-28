@@ -1,4 +1,4 @@
-package vn.vnpost.lunchorder.tools.config;
+package vn.vnpost.lunchorder.tools.redis;
 
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
