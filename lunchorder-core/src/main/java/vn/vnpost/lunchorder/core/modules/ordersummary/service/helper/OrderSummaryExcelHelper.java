@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Component;
+import vn.vnpost.lunchorder.common.enums.MealType;
 import vn.vnpost.lunchorder.core.modules.systemconfig.repository.SystemConfigRepository;
 import vn.vnpost.lunchorder.core.modules.ordersummary.repository.projection.MonthlyOrderDetail;
 import vn.vnpost.lunchorder.core.modules.ordersummary.service.dto.DailyOrderSummaryResponse;
@@ -137,8 +138,7 @@ public class OrderSummaryExcelHelper {
             Long userId = record.getUserId();
             LocalDate date = record.getOrderDate();
 
-            BigDecimal price = record.getPrice() != null ? record.getPrice() : BigDecimal.ZERO;
-            boolean isSpecial = price.compareTo(normalPrice) > 0;
+            boolean isSpecial = record.getMealType() == MealType.SPECIAL;
 
             int day = date.getDayOfMonth();
             userDayMealMap

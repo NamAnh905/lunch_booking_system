@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Optional;
 
 import jakarta.persistence.criteria.Predicate;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -16,6 +17,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
+import vn.vnpost.lunchorder.common.audit.AuditEvent;
 import vn.vnpost.lunchorder.common.base.PageResponse;
 import vn.vnpost.lunchorder.common.constant.PaginationConstants;
 import vn.vnpost.lunchorder.system.modules.department.entity.Department;
@@ -33,9 +35,14 @@ import vn.vnpost.lunchorder.system.modules.user.service.dto.UserUpdateRequest;
 import vn.vnpost.lunchorder.system.modules.user.service.mapstruct.UserMapper;
 import vn.vnpost.lunchorder.system.modules.role.repository.RoleRepository;
 import vn.vnpost.lunchorder.system.modules.role.entity.Role;
+import vn.vnpost.lunchorder.tools.excel.ExcelExportService;
 import org.springframework.transaction.annotation.Transactional;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -46,22 +53,41 @@ public class UserServiceImpl implements UserService {
     private final DepartmentRepository departmentRepository;
     private final PasswordEncoder passwordEncoder;
     private final RoleRepository roleRepository;
+    private final ApplicationEventPublisher eventPublisher;
+    private final ExcelExportService excelExportService;
+
+    private Set<String> roleCodesOf(User user) {
+        if (user.getRoles() == null) {
+            return new TreeSet<>();
+        }
+        return user.getRoles().stream()
+                .map(Role::getCode)
+                .collect(Collectors.toCollection(TreeSet::new));
+    }
 
     private Department resolveDepartment(String departmentValue) {
         if (departmentValue == null) {
             return null;
         }
-        try {
-            Long id = Long.parseLong(departmentValue);
+        Long id = parseIdOrNull(departmentValue);
+        if (id != null) {
             Optional<Department> deptOpt = departmentRepository.findById(id);
             if (deptOpt.isPresent()) {
                 return deptOpt.get();
             }
-        } catch (NumberFormatException e) {}
+        }
 
         return departmentRepository.findByCode(departmentValue)
                 .or(() -> departmentRepository.findByName(departmentValue))
                 .orElseThrow(() -> new AppException(ErrorCode.DEPARTMENT_NOT_FOUND));
+    }
+
+    private Long parseIdOrNull(String value) {
+        try {
+            return Long.parseLong(value.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     @Override
@@ -88,7 +114,9 @@ public class UserServiceImpl implements UserService {
         }
 
         User savedUser = userRepository.save(user);
-        return userMapper.toDto(savedUser);
+        UserResponse created = userMapper.toDto(savedUser);
+        eventPublisher.publishEvent(new AuditEvent("CREATE_USER", "User", savedUser.getId(), null, created));
+        return created;
     }
 
     @Override
@@ -97,6 +125,7 @@ public class UserServiceImpl implements UserService {
     public UserResponse update(Long id, UserUpdateRequest request) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        UserResponse before = userMapper.toDto(user);
 
         userMapper.update(request, user);
         if (request.getDepartment() != null) {
@@ -117,7 +146,9 @@ public class UserServiceImpl implements UserService {
         }
 
         User savedUser = userRepository.save(user);
-        return userMapper.toDto(savedUser);
+        UserResponse after = userMapper.toDto(savedUser);
+        eventPublisher.publishEvent(new AuditEvent("UPDATE_USER", "User", id, before, after));
+        return after;
     }
 
     @Override
@@ -154,8 +185,11 @@ public class UserServiceImpl implements UserService {
     public void delete(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        UserResponse before = userMapper.toDto(user);
+
         user.setIsActive(false);
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        eventPublisher.publishEvent(new AuditEvent("DELETE_USER", "User", id, before, userMapper.toDto(savedUser)));
     }
 
     @Override
@@ -169,8 +203,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Cacheable(value = "users", key = "'list:' + #page + '-' + #size + '-' + #keyword + '-' + #departmentIds + '-' + #isActives")
     public PageResponse<UserResponse> findAll(int page, int size, String keyword, List<Long> departmentIds, List<Boolean> isActives) {
-        int pageNumber = Math.max(0, page - 1);
-        Pageable pageable = PageRequest.of(pageNumber, PaginationConstants.clampSize(size), Sort.by(Sort.Direction.DESC, "id"));
+        Pageable pageable = PaginationConstants.toPageable(page, size, Sort.by(Sort.Direction.DESC, "id"));
 
         Specification<User> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -192,15 +225,7 @@ public class UserServiceImpl implements UserService {
 
         Page<User> userPage = userRepository.findAll(spec, pageable);
 
-        List<UserResponse> dtoList = userMapper.toDtoList(userPage.getContent());
-
-        return PageResponse.<UserResponse>builder()
-                .currentPage(page)
-                .totalPages(userPage.getTotalPages())
-                .pageSize(size)
-                .totalElements(userPage.getTotalElements())
-                .data(dtoList)
-                .build();
+        return PageResponse.of(userPage, userMapper.toDtoList(userPage.getContent()), page, size);
     }
 
     @Override
@@ -212,15 +237,15 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Cacheable(value = "users", key = "'search:' + #keyword")
-    public List<UserResponse> search(String keyword) {
-        List<User> users = userRepository.findByFullNameContainingIgnoreCaseOrUsernameContainingIgnoreCase(keyword, keyword);
-        return userMapper.toDtoList(users);
+    public byte[] exportExcel(String keyword) {
+        try (ByteArrayInputStream in = excelExportService.exportToExcel(export(keyword), "Danh sách người dùng")) {
+            return in.readAllBytes();
+        } catch (IOException e) {
+            throw new AppException(ErrorCode.EXPORT_FAILED);
+        }
     }
 
-    @Override
-    @Cacheable(value = "users", key = "'export:' + #keyword")
-    public List<UserResponse> export(String keyword) {
+    private List<UserResponse> export(String keyword) {
         List<User> users;
         Sort sort = Sort.by(Sort.Direction.DESC, "id");
         if (keyword != null && !keyword.trim().isEmpty()) {
@@ -237,6 +262,7 @@ public class UserServiceImpl implements UserService {
     public void assignRoles(Long userId, Set<String> roleCodes) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        Set<String> before = roleCodesOf(user);
 
         if (roleCodes == null || roleCodes.isEmpty()) {
             user.setRoles(new HashSet<>());
@@ -247,6 +273,8 @@ public class UserServiceImpl implements UserService {
             }
             user.setRoles(new HashSet<>(roles));
         }
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        eventPublisher.publishEvent(new AuditEvent(
+                "ASSIGN_USER_ROLES", "User", userId, before, roleCodesOf(savedUser)));
     }
 }

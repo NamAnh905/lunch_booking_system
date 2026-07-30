@@ -24,7 +24,10 @@ import vn.vnpost.lunchorder.core.modules.dish.service.dto.DishCreateRequest;
 import vn.vnpost.lunchorder.core.modules.dish.service.dto.DishResponse;
 import vn.vnpost.lunchorder.core.modules.dish.service.dto.DishUpdateRequest;
 import vn.vnpost.lunchorder.core.modules.dish.service.mapstruct.DishMapper;
+import vn.vnpost.lunchorder.tools.excel.ExcelExportService;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,6 +38,7 @@ import java.util.List;
 public class DishServiceImpl implements DishService {
     private final DishRepository dishRepository;
     private final DishMapper dishMapper;
+    private final ExcelExportService excelExportService;
 
     @Override
     @Transactional
@@ -71,18 +75,15 @@ public class DishServiceImpl implements DishService {
     @Override
     @Cacheable(value = "dishes", key = "'list:' + #page + '-' + #size + '-' + #keyword + '-' + #types + '-' + #isActives")
     public PageResponse<DishResponse> findAll(int page, int size, String keyword, List<String> types, List<Boolean> isActives) {
-        int pageNumber = Math.max(0, page - 1);
-        Pageable pageable = PageRequest.of(pageNumber, PaginationConstants.clampSize(size), Sort.by(Sort.Direction.DESC, "id"));
+        Pageable pageable = PaginationConstants.toPageable(page, size, Sort.by(Sort.Direction.DESC, "id"));
+        List<DishType> dishTypes = parseDishTypes(types);
 
         Specification<Dish> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (keyword != null && !keyword.trim().isEmpty()) {
                 predicates.add(cb.like(cb.lower(root.get("name")), "%" + keyword.trim().toLowerCase() + "%"));
             }
-            if (types != null && !types.isEmpty()) {
-                List<DishType> dishTypes = types.stream()
-                        .map(DishType::valueOf)
-                        .toList();
+            if (!dishTypes.isEmpty()) {
                 predicates.add(root.get("type").in(dishTypes));
             }
             if (isActives != null && !isActives.isEmpty()) {
@@ -92,16 +93,8 @@ public class DishServiceImpl implements DishService {
         };
 
         Page<Dish> dishPage = dishRepository.findAll(spec, pageable);
-        
-        List<DishResponse> dtoList = dishMapper.toDtoList(dishPage.getContent());
 
-        return PageResponse.<DishResponse>builder()
-                .currentPage(page)
-                .totalPages(dishPage.getTotalPages())
-                .pageSize(size)
-                .totalElements(dishPage.getTotalElements())
-                .data(dtoList)
-                .build();
+        return PageResponse.of(dishPage, dishMapper.toDtoList(dishPage.getContent()), page, size);
     }
 
     @Override
@@ -113,15 +106,33 @@ public class DishServiceImpl implements DishService {
     }
 
     @Override
-    @Cacheable(value = "dishes", key = "'search:' + #name")
-    public List<DishResponse> search(String name) {
-        List<Dish> dishes = dishRepository.findByNameContainingIgnoreCase(name);
-        return dishMapper.toDtoList(dishes);
+    public byte[] exportExcel(String keyword) {
+        try (ByteArrayInputStream in = excelExportService.exportToExcel(export(keyword), "Danh sách món ăn")) {
+            return in.readAllBytes();
+        } catch (IOException e) {
+            throw new AppException(ErrorCode.EXPORT_FAILED);
+        }
     }
 
-    @Override
-    @Cacheable(value = "dishes", key = "'export:' + #keyword")
-    public List<DishResponse> export(String keyword) {
+    private List<DishType> parseDishTypes(List<String> types) {
+        if (types == null || types.isEmpty()) {
+            return List.of();
+        }
+        List<DishType> parsed = new ArrayList<>();
+        for (String type : types) {
+            if (type == null || type.isBlank()) {
+                continue;
+            }
+            try {
+                parsed.add(DishType.valueOf(type.trim().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new AppException(ErrorCode.INVALID_ENUM_VALUE);
+            }
+        }
+        return parsed;
+    }
+
+    private List<DishResponse> export(String keyword) {
         List<Dish> dishes;
         Sort sort = Sort.by(Sort.Direction.DESC, "id");
         if (keyword != null && !keyword.trim().isEmpty()) {

@@ -7,6 +7,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import vn.vnpost.lunchorder.common.enums.MealType;
 import vn.vnpost.lunchorder.common.enums.OrderStatus;
 import vn.vnpost.lunchorder.common.enums.TicketSource;
 import vn.vnpost.lunchorder.core.modules.menu.entity.Menu;
@@ -43,6 +44,10 @@ public class Order {
 
     @Column(name = "price", precision = 10, scale = 2)
     private BigDecimal price;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "meal_type", length = 20, nullable = false)
+    private MealType mealType = MealType.NORMAL;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 20)

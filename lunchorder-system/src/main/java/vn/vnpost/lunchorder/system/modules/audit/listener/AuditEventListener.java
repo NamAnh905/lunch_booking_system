@@ -1,7 +1,6 @@
 package vn.vnpost.lunchorder.system.modules.audit.listener;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -31,7 +30,8 @@ public class AuditEventListener {
                     event.getAction(),
                     event.getTargetEntity(),
                     event.getTargetId(),
-                    serialize(event.getPayload()),
+                    serialize(event.getOldPayload()),
+                    serialize(event.getNewPayload()),
                     currentIpAddress());
         } catch (Exception e) {
             log.warn("Failed to write audit log for action {}", event.getAction(), e);
@@ -45,7 +45,7 @@ public class AuditEventListener {
         try {
             return objectMapper.writeValueAsString(payload);
         } catch (Exception e) {
-            log.warn("Failed to serialize audit new_value", e);
+            log.warn("Failed to serialize audit payload", e);
             return null;
         }
     }
@@ -62,11 +62,6 @@ public class AuditEventListener {
         if (!(RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes)) {
             return null;
         }
-        HttpServletRequest request = attributes.getRequest();
-        String forwardedFor = request.getHeader("X-Forwarded-For");
-        if (forwardedFor != null && !forwardedFor.isBlank()) {
-            return forwardedFor.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
+        return attributes.getRequest().getRemoteAddr();
     }
 }

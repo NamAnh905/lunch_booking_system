@@ -3,7 +3,6 @@ package vn.vnpost.lunchorder.core.modules.price.service.impl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.cache.annotation.CacheEvict;
@@ -14,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.vnpost.lunchorder.common.audit.AuditEvent;
 import vn.vnpost.lunchorder.common.base.PageResponse;
 import vn.vnpost.lunchorder.common.constant.PaginationConstants;
+import vn.vnpost.lunchorder.common.enums.MealType;
 import vn.vnpost.lunchorder.core.modules.price.entity.Price;
 import vn.vnpost.lunchorder.common.exception.AppException;
 import vn.vnpost.lunchorder.common.exception.ErrorCode;
@@ -43,9 +43,11 @@ public class PriceServiceImpl implements PriceService {
         if (priceRepository.findByName(request.getName()).isPresent()) {
             throw new AppException(ErrorCode.PRICE_ALREADY_EXISTS);
         }
+        assertMealTypeAvailable(request.getMealType(), request.getIsActive(), null);
+
         Price price = priceMapper.toEntity(request);
         price = priceRepository.save(price);
-        eventPublisher.publishEvent(new AuditEvent("CREATE_PRICE", "Price", price.getId(), request));
+        eventPublisher.publishEvent(new AuditEvent("CREATE_PRICE", "Price", price.getId(), null, priceMapper.toDto(price)));
         return priceMapper.toDto(price);
     }
 
@@ -55,11 +57,28 @@ public class PriceServiceImpl implements PriceService {
     public PriceResponse update(Long id, PriceUpdateRequest request) {
         Price price = priceRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.PRICE_NOT_FOUND));
+        PriceResponse before = priceMapper.toDto(price);
+
+        assertMealTypeAvailable(
+                request.getMealType() != null ? request.getMealType() : price.getMealType(),
+                request.getIsActive() != null ? request.getIsActive() : price.getIsActive(),
+                id);
 
         priceMapper.update(request, price);
         price = priceRepository.save(price);
-        eventPublisher.publishEvent(new AuditEvent("UPDATE_PRICE", "Price", id, request));
+        eventPublisher.publishEvent(new AuditEvent("UPDATE_PRICE", "Price", id, before, priceMapper.toDto(price)));
         return priceMapper.toDto(price);
+    }
+
+    private void assertMealTypeAvailable(MealType mealType, Boolean isActive, Long currentId) {
+        if (mealType == null || !Boolean.TRUE.equals(isActive)) {
+            return;
+        }
+        priceRepository.findByMealTypeAndIsActiveTrue(mealType)
+                .filter(existing -> !existing.getId().equals(currentId))
+                .ifPresent(existing -> {
+                    throw new AppException(ErrorCode.PRICE_MEAL_TYPE_ALREADY_ACTIVE);
+                });
     }
 
     @Override
@@ -68,23 +87,17 @@ public class PriceServiceImpl implements PriceService {
     public void delete(Long id) {
         Price price = priceRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.PRICE_NOT_FOUND));
-        priceRepository.delete(price);
-        eventPublisher.publishEvent(new AuditEvent("DELETE_PRICE", "Price", id, null));
-    }
+        PriceResponse before = priceMapper.toDto(price);
 
-    @Override
-    @Cacheable(value = "prices", key = "'findById:' + #id")
-    public PriceResponse findById(Long id) {
-        Price price = priceRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.PRICE_NOT_FOUND));
-        return priceMapper.toDto(price);
+        price.setIsActive(false);
+        price = priceRepository.save(price);
+        eventPublisher.publishEvent(new AuditEvent("DELETE_PRICE", "Price", id, before, priceMapper.toDto(price)));
     }
 
     @Override
     @Cacheable(value = "prices", key = "'list:' + #page + '-' + #size + '-' + #keyword")
     public PageResponse<PriceResponse> findAll(int page, int size, String keyword) {
-        int pageNumber = Math.max(0, page - 1);
-        Pageable pageable = PageRequest.of(pageNumber, PaginationConstants.clampSize(size), Sort.by(Sort.Direction.ASC, "id"));
+        Pageable pageable = PaginationConstants.toPageable(page, size, Sort.by(Sort.Direction.ASC, "id"));
 
         Page<Price> pricePage;
         if (keyword != null && !keyword.trim().isEmpty()) {
@@ -93,15 +106,7 @@ public class PriceServiceImpl implements PriceService {
             pricePage = priceRepository.findAll(pageable);
         }
 
-        List<PriceResponse> dtoList = priceMapper.toDtoList(pricePage.getContent());
-
-        return PageResponse.<PriceResponse>builder()
-                .currentPage(page)
-                .totalPages(pricePage.getTotalPages())
-                .pageSize(size)
-                .totalElements(pricePage.getTotalElements())
-                .data(dtoList)
-                .build();
+        return PageResponse.of(pricePage, priceMapper.toDtoList(pricePage.getContent()), page, size);
     }
 
     @Override

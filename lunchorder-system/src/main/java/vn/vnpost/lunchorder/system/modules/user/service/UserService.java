@@ -26,9 +26,8 @@ public interface UserService {
 
     List<UserResponse> getAll();
 
-    List<UserResponse> search(String keyword);
 
-    List<UserResponse> export(String keyword);
+    byte[] exportExcel(String keyword);
 
     void assignRoles(Long userId, Set<String> roleCodes);
 }

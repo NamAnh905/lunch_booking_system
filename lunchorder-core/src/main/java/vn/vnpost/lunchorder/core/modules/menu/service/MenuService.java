@@ -21,11 +21,9 @@ public interface MenuService {
 
     PageResponse<MenuResponse> findAll(int page, int size, String keyword);
 
-    MenuResponse findById(Long id);
 
-    List<MenuResponse> findByDate(LocalDate date);
 
     List<MenuResponse> findByDateRange(LocalDate startDate, LocalDate endDate);
 
-    List<MenuResponse> export(String keyword);
+    byte[] exportExcel(String keyword);
 }

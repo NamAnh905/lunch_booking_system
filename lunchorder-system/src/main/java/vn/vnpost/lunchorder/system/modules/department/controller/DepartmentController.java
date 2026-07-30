@@ -66,12 +66,4 @@ public class DepartmentController {
                 .result(departmentService.getAll())
                 .build();
     }
-
-    @GetMapping("/search")
-    @PreAuthorize("hasAuthority('VIEW_DEPARTMENTS')")
-    public ApiResponse<List<DepartmentResponse>> search(@RequestParam String keyword) {
-        return ApiResponse.<List<DepartmentResponse>>builder()
-                .result(departmentService.search(keyword))
-                .build();
-    }
 }

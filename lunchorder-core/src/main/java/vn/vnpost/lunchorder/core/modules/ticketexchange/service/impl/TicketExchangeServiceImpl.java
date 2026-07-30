@@ -6,7 +6,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.vnpost.lunchorder.common.base.PageResponse;
@@ -48,22 +47,12 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
 
     @Override
     public PageResponse<TicketExchangeResponse> getOpenExchanges(int page, int size, String keyword) {
-        int pageNumber = Math.max(0, page - 1);
-        Pageable pageable = PageRequest.of(pageNumber, PaginationConstants.clampSize(size));
+        Pageable pageable = PaginationConstants.toPageable(page, size);
 
         Page<TicketExchange> entityPage = ticketExchangeRepository.findOpenForMarket(
                 TicketExchangeStatus.OPEN, keyword, pageable);
-        List<TicketExchangeResponse> dtoList = entityPage.getContent().stream()
-                .map(ticketExchangeMapper::toDto)
-                .toList();
 
-        return PageResponse.<TicketExchangeResponse>builder()
-                .currentPage(page)
-                .totalPages(entityPage.getTotalPages())
-                .pageSize(size)
-                .totalElements(entityPage.getTotalElements())
-                .data(dtoList)
-                .build();
+        return PageResponse.of(entityPage, toDtoList(entityPage), page, size);
     }
 
     @Override
@@ -136,8 +125,7 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
         }
 
         LocalDate menuDate = ticketExchange.getOrder().getOrderDate();
-        LocalDate today = LocalDate.now();
-        if (menuDate.isBefore(today)) {
+        if (menuDate.isBefore(cutOffPolicy.today())) {
             throw new AppException(ErrorCode.ORDER_CUTOFF_REACHED);
         }
 
@@ -151,51 +139,16 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
         TicketExchange ticketExchange = ticketExchangeRepository.findByIdForUpdate(exchangeId)
                 .orElseThrow(() -> new AppException(ErrorCode.EXCHANGE_NOT_FOUND));
 
-        if (ticketExchange.getStatus() == TicketExchangeStatus.MATCHED) {
-            throw new AppException(ErrorCode.EXCHANGE_ALREADY_CLAIMED);
-        }
+        validateClaimable(ticketExchange, userId);
 
-        if (ticketExchange.getStatus() != TicketExchangeStatus.OPEN) {
-            throw new AppException(ErrorCode.EXCHANGE_NOT_OPEN);
-        }
-
-        if (ticketExchange.getOrder().getUser().getId().equals(userId)) {
-            throw new AppException(ErrorCode.CANNOT_CLAIM_OWN_TICKET);
-        }
-
-        LocalDate today = LocalDate.now();
-
-        if (ticketExchangeRepository.existsActiveListingBySeller(userId, TicketExchangeStatus.OPEN, today)) {
-            throw new AppException(ErrorCode.USER_TICKET_ON_MARKET);
-        }
-
-        if (orderRepository.existsActiveOrderNotOnMarket(userId, today, OrderStatus.CANCELLED, TicketExchangeStatus.OPEN)) {
-            throw new AppException(ErrorCode.USER_ALREADY_HAS_TICKET);
-        }
-
-        LocalDate menuDate = ticketExchange.getOrder().getOrderDate();
-        boolean hasActiveOrderOnSameDay = orderRepository.findByUserIdAndOrderDate(userId, menuDate)
-                .filter(o -> o.getStatus() != OrderStatus.CANCELLED)
-                .isPresent();
-        if (hasActiveOrderOnSameDay) {
-            throw new AppException(ErrorCode.ORDER_ALREADY_EXISTS);
-        }
-
-        if (!cutOffPolicy.isWithinExchangeWindow(menuDate)) {
-            throw new AppException(ErrorCode.ORDER_CUTOFF_REACHED);
-        }
-
+        Order order = ticketExchange.getOrder();
+        User seller = order.getUser();
         User buyer = userLookupService.getById(userId);
-
-        User seller = orderRepository.findById(ticketExchange.getOrder().getId())
-                .map(Order::getUser)
-                .orElse(ticketExchange.getOrder().getUser());
 
         ticketExchange.setStatus(TicketExchangeStatus.MATCHED);
         ticketExchange.setBuyer(buyer);
         ticketExchange = ticketExchangeRepository.save(ticketExchange);
 
-        Order order = ticketExchange.getOrder();
         order.setUser(buyer);
         order.setStatus(OrderStatus.PENDING);
         orderRepository.save(order);
@@ -212,21 +165,54 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
 
     @Override
     public PageResponse<TicketExchangeResponse> getAdminExchanges(int page, int size, LocalDate startDate, LocalDate endDate, String status, String keyword) {
-        int pageNumber = Math.max(0, page - 1);
-        Pageable pageable = PageRequest.of(pageNumber, PaginationConstants.clampSize(size));
-        
-        Page<TicketExchange> entityPage = ticketExchangeRepository.findForAdmin(startDate, endDate, parseStatusOrNull(status), keyword, pageable);
-        List<TicketExchangeResponse> dtoList = entityPage.getContent().stream()
+        Pageable pageable = PaginationConstants.toPageable(page, size);
+
+        Page<TicketExchange> entityPage = ticketExchangeRepository.findForAdmin(
+                startDate, endDate, parseStatusOrNull(status), keyword, pageable);
+
+        return PageResponse.of(entityPage, toDtoList(entityPage), page, size);
+    }
+
+    private List<TicketExchangeResponse> toDtoList(Page<TicketExchange> entityPage) {
+        return entityPage.getContent().stream()
                 .map(ticketExchangeMapper::toDto)
                 .toList();
+    }
 
-        return PageResponse.<TicketExchangeResponse>builder()
-                .currentPage(page)
-                .totalPages(entityPage.getTotalPages())
-                .pageSize(size)
-                .totalElements(entityPage.getTotalElements())
-                .data(dtoList)
-                .build();
+    private void validateClaimable(TicketExchange ticketExchange, Long userId) {
+        if (ticketExchange.getStatus() == TicketExchangeStatus.MATCHED) {
+            throw new AppException(ErrorCode.EXCHANGE_ALREADY_CLAIMED);
+        }
+
+        if (ticketExchange.getStatus() != TicketExchangeStatus.OPEN) {
+            throw new AppException(ErrorCode.EXCHANGE_NOT_OPEN);
+        }
+
+        if (ticketExchange.getOrder().getUser().getId().equals(userId)) {
+            throw new AppException(ErrorCode.CANNOT_CLAIM_OWN_TICKET);
+        }
+
+        LocalDate today = cutOffPolicy.today();
+
+        if (ticketExchangeRepository.existsActiveListingBySeller(userId, TicketExchangeStatus.OPEN, today)) {
+            throw new AppException(ErrorCode.USER_TICKET_ON_MARKET);
+        }
+
+        if (orderRepository.existsActiveOrderNotOnMarket(userId, today, OrderStatus.CANCELLED, TicketExchangeStatus.OPEN)) {
+            throw new AppException(ErrorCode.USER_ALREADY_HAS_TICKET);
+        }
+
+        LocalDate menuDate = ticketExchange.getOrder().getOrderDate();
+        boolean hasActiveOrderOnSameDay = orderRepository.findByUserIdAndOrderDate(userId, menuDate)
+                .filter(order -> order.getStatus() != OrderStatus.CANCELLED)
+                .isPresent();
+        if (hasActiveOrderOnSameDay) {
+            throw new AppException(ErrorCode.ORDER_ALREADY_EXISTS);
+        }
+
+        if (!cutOffPolicy.isWithinExchangeWindow(menuDate)) {
+            throw new AppException(ErrorCode.ORDER_CUTOFF_REACHED);
+        }
     }
 
     private boolean isClaimedBy(TicketExchange ticketExchange, Long userId) {

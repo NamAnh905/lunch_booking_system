@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface AuditLogService {
 
-    void record(Long userId, String action, String targetEntity, Long targetId, String newValue, String ipAddress);
+    void record(Long userId, String action, String targetEntity, Long targetId, String oldValue, String newValue, String ipAddress);
 
     PageResponse<AuditLogResponse> findAll(String keyword, String action, LocalDate startDate, LocalDate endDate, int page, int size);
 

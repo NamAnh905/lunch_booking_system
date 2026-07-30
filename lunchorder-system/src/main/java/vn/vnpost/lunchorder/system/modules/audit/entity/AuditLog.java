@@ -42,6 +42,9 @@ public class AuditLog {
     @Column(name = "target_id")
     private Long targetId;
 
+    @Column(name = "old_value", columnDefinition = "text")
+    private String oldValue;
+
     @Column(name = "new_value", columnDefinition = "text")
     private String newValue;
 

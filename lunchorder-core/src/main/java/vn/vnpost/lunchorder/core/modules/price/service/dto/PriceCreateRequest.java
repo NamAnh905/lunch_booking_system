@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import vn.vnpost.lunchorder.common.constant.ValidationConstants;
+import vn.vnpost.lunchorder.common.enums.MealType;
 
 import java.math.BigDecimal;
 
@@ -22,6 +23,8 @@ public class PriceCreateRequest {
     @NotNull(message = "Giá không được để trống.")
     @Min(value = 0, message = "Giá không được nhỏ hơn 0.")
     private BigDecimal amount;
+
+    private MealType mealType = MealType.NORMAL;
 
     private String description;
 

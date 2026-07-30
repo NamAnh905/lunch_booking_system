@@ -2,12 +2,12 @@
 -- PostgreSQL database dump
 --
 
-\restrict qhxuZS93EA3u6IbJqezgkgyDke37DjS2j7XXmePUPjRdzaa0PjzZsbitmalQEgV
+\restrict Mq97QjUeWhyJejMZD116OUxviacAv4wH3HRWkIyLw4jzp2Bh6rjx1eU509D2sfe
 
 -- Dumped from database version 16.14
 -- Dumped by pg_dump version 16.14
 
--- Started on 2026-07-28 09:47:43
+-- Started on 2026-07-30 09:12:06
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -273,7 +273,9 @@ CREATE TABLE public."order" (
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     updated_by bigint,
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-    order_date date
+    order_date date,
+    meal_type character varying(20) DEFAULT 'NORMAL'::character varying NOT NULL,
+    CONSTRAINT order_meal_type_check CHECK (((meal_type)::text = ANY ((ARRAY['NORMAL'::character varying, 'SPECIAL'::character varying])::text[])))
 );
 
 
@@ -379,7 +381,9 @@ CREATE TABLE public.price (
     amount numeric(10,2) NOT NULL,
     description character varying(500),
     is_active boolean NOT NULL,
-    name character varying(100) NOT NULL
+    name character varying(100) NOT NULL,
+    meal_type character varying(20) DEFAULT 'NORMAL'::character varying NOT NULL,
+    CONSTRAINT price_meal_type_check CHECK (((meal_type)::text = ANY ((ARRAY['NORMAL'::character varying, 'SPECIAL'::character varying])::text[])))
 );
 
 
@@ -590,7 +594,7 @@ CREATE TABLE public.user_role (
 ALTER TABLE public.user_role OWNER TO postgres;
 
 --
--- TOC entry 4904 (class 2606 OID 16858)
+-- TOC entry 4906 (class 2606 OID 16858)
 -- Name: audit_log audit_log_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -599,7 +603,7 @@ ALTER TABLE ONLY public.audit_log
 
 
 --
--- TOC entry 4842 (class 2606 OID 16496)
+-- TOC entry 4846 (class 2606 OID 16496)
 -- Name: department department_code_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -608,7 +612,7 @@ ALTER TABLE ONLY public.department
 
 
 --
--- TOC entry 4844 (class 2606 OID 16494)
+-- TOC entry 4848 (class 2606 OID 16494)
 -- Name: department department_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -617,7 +621,7 @@ ALTER TABLE ONLY public.department
 
 
 --
--- TOC entry 4864 (class 2606 OID 16575)
+-- TOC entry 4868 (class 2606 OID 16575)
 -- Name: dish dish_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -626,7 +630,7 @@ ALTER TABLE ONLY public.dish
 
 
 --
--- TOC entry 4890 (class 2606 OID 16696)
+-- TOC entry 4892 (class 2606 OID 16696)
 -- Name: invalidated_token invalidated_token_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -635,7 +639,7 @@ ALTER TABLE ONLY public.invalidated_token
 
 
 --
--- TOC entry 4892 (class 2606 OID 16698)
+-- TOC entry 4894 (class 2606 OID 16698)
 -- Name: invalidated_token invalidated_token_token_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -644,7 +648,7 @@ ALTER TABLE ONLY public.invalidated_token
 
 
 --
--- TOC entry 4871 (class 2606 OID 16928)
+-- TOC entry 4875 (class 2606 OID 16928)
 -- Name: menu_dish menu_dish_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -653,7 +657,7 @@ ALTER TABLE ONLY public.menu_dish
 
 
 --
--- TOC entry 4866 (class 2606 OID 16583)
+-- TOC entry 4870 (class 2606 OID 16583)
 -- Name: menu menu_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -662,7 +666,7 @@ ALTER TABLE ONLY public.menu
 
 
 --
--- TOC entry 4888 (class 2606 OID 16682)
+-- TOC entry 4890 (class 2606 OID 16682)
 -- Name: notification notification_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -671,7 +675,7 @@ ALTER TABLE ONLY public.notification
 
 
 --
--- TOC entry 4876 (class 2606 OID 16613)
+-- TOC entry 4880 (class 2606 OID 16613)
 -- Name: order order_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -680,7 +684,7 @@ ALTER TABLE ONLY public."order"
 
 
 --
--- TOC entry 4907 (class 2606 OID 16891)
+-- TOC entry 4909 (class 2606 OID 16891)
 -- Name: payment payment_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -689,7 +693,7 @@ ALTER TABLE ONLY public.payment
 
 
 --
--- TOC entry 4850 (class 2606 OID 16512)
+-- TOC entry 4854 (class 2606 OID 16512)
 -- Name: permission permission_action_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -698,7 +702,7 @@ ALTER TABLE ONLY public.permission
 
 
 --
--- TOC entry 4852 (class 2606 OID 16510)
+-- TOC entry 4856 (class 2606 OID 16510)
 -- Name: permission permission_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -707,7 +711,7 @@ ALTER TABLE ONLY public.permission
 
 
 --
--- TOC entry 4909 (class 2606 OID 16907)
+-- TOC entry 4911 (class 2606 OID 16907)
 -- Name: price price_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -716,7 +720,7 @@ ALTER TABLE ONLY public.price
 
 
 --
--- TOC entry 4894 (class 2606 OID 16706)
+-- TOC entry 4896 (class 2606 OID 16706)
 -- Name: refresh_token refresh_token_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -725,7 +729,7 @@ ALTER TABLE ONLY public.refresh_token
 
 
 --
--- TOC entry 4896 (class 2606 OID 16710)
+-- TOC entry 4898 (class 2606 OID 16710)
 -- Name: refresh_token refresh_token_token_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -734,7 +738,7 @@ ALTER TABLE ONLY public.refresh_token
 
 
 --
--- TOC entry 4898 (class 2606 OID 16708)
+-- TOC entry 4900 (class 2606 OID 16708)
 -- Name: refresh_token refresh_token_user_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -743,7 +747,7 @@ ALTER TABLE ONLY public.refresh_token
 
 
 --
--- TOC entry 4846 (class 2606 OID 16504)
+-- TOC entry 4850 (class 2606 OID 16504)
 -- Name: role role_code_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -752,7 +756,7 @@ ALTER TABLE ONLY public.role
 
 
 --
--- TOC entry 4862 (class 2606 OID 16556)
+-- TOC entry 4866 (class 2606 OID 16556)
 -- Name: role_permission role_permission_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -761,7 +765,7 @@ ALTER TABLE ONLY public.role_permission
 
 
 --
--- TOC entry 4848 (class 2606 OID 16502)
+-- TOC entry 4852 (class 2606 OID 16502)
 -- Name: role role_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -770,7 +774,7 @@ ALTER TABLE ONLY public.role
 
 
 --
--- TOC entry 4900 (class 2606 OID 16843)
+-- TOC entry 4902 (class 2606 OID 16843)
 -- Name: system_config system_config_config_key_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -779,7 +783,7 @@ ALTER TABLE ONLY public.system_config
 
 
 --
--- TOC entry 4902 (class 2606 OID 16841)
+-- TOC entry 4904 (class 2606 OID 16841)
 -- Name: system_config system_config_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -788,7 +792,7 @@ ALTER TABLE ONLY public.system_config
 
 
 --
--- TOC entry 4883 (class 2606 OID 16641)
+-- TOC entry 4885 (class 2606 OID 16641)
 -- Name: ticket_exchange ticket_exchange_order_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -797,7 +801,7 @@ ALTER TABLE ONLY public.ticket_exchange
 
 
 --
--- TOC entry 4885 (class 2606 OID 16639)
+-- TOC entry 4887 (class 2606 OID 16639)
 -- Name: ticket_exchange ticket_exchange_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -806,7 +810,7 @@ ALTER TABLE ONLY public.ticket_exchange
 
 
 --
--- TOC entry 4868 (class 2606 OID 16909)
+-- TOC entry 4872 (class 2606 OID 16909)
 -- Name: menu unique_menu_date_price; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -815,16 +819,7 @@ ALTER TABLE ONLY public.menu
 
 
 --
--- TOC entry 4878 (class 2606 OID 16615)
--- Name: order unique_user_menu; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public."order"
-    ADD CONSTRAINT unique_user_menu UNIQUE (user_id, menu_id);
-
-
---
--- TOC entry 4880 (class 2606 OID 16933)
+-- TOC entry 4882 (class 2606 OID 16933)
 -- Name: order unique_user_order_date; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -833,7 +828,7 @@ ALTER TABLE ONLY public."order"
 
 
 --
--- TOC entry 4856 (class 2606 OID 16523)
+-- TOC entry 4860 (class 2606 OID 16523)
 -- Name: user user_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -842,7 +837,7 @@ ALTER TABLE ONLY public."user"
 
 
 --
--- TOC entry 4860 (class 2606 OID 16541)
+-- TOC entry 4864 (class 2606 OID 16541)
 -- Name: user_role user_role_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -851,7 +846,7 @@ ALTER TABLE ONLY public.user_role
 
 
 --
--- TOC entry 4858 (class 2606 OID 16525)
+-- TOC entry 4862 (class 2606 OID 16525)
 -- Name: user user_username_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -860,7 +855,7 @@ ALTER TABLE ONLY public."user"
 
 
 --
--- TOC entry 4886 (class 1259 OID 16688)
+-- TOC entry 4888 (class 1259 OID 16688)
 -- Name: idx_notification_user_read; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -868,7 +863,7 @@ CREATE INDEX idx_notification_user_read ON public.notification USING btree (user
 
 
 --
--- TOC entry 4872 (class 1259 OID 16632)
+-- TOC entry 4876 (class 1259 OID 16632)
 -- Name: idx_order_menu; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -876,7 +871,7 @@ CREATE INDEX idx_order_menu ON public."order" USING btree (menu_id);
 
 
 --
--- TOC entry 4873 (class 1259 OID 16899)
+-- TOC entry 4877 (class 1259 OID 16899)
 -- Name: idx_order_status; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -884,7 +879,7 @@ CREATE INDEX idx_order_status ON public."order" USING btree (status);
 
 
 --
--- TOC entry 4874 (class 1259 OID 16631)
+-- TOC entry 4878 (class 1259 OID 16631)
 -- Name: idx_order_user_status; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -892,7 +887,7 @@ CREATE INDEX idx_order_user_status ON public."order" USING btree (user_id, statu
 
 
 --
--- TOC entry 4905 (class 1259 OID 16898)
+-- TOC entry 4907 (class 1259 OID 16898)
 -- Name: idx_payment_user_month_year; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -900,7 +895,7 @@ CREATE INDEX idx_payment_user_month_year ON public.payment USING btree (user_id,
 
 
 --
--- TOC entry 4881 (class 1259 OID 16652)
+-- TOC entry 4883 (class 1259 OID 16652)
 -- Name: idx_ticket_exchange_status; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -908,7 +903,7 @@ CREATE INDEX idx_ticket_exchange_status ON public.ticket_exchange USING btree (s
 
 
 --
--- TOC entry 4853 (class 1259 OID 16536)
+-- TOC entry 4857 (class 1259 OID 16536)
 -- Name: idx_user_department; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -916,7 +911,7 @@ CREATE INDEX idx_user_department ON public."user" USING btree (department_id);
 
 
 --
--- TOC entry 4854 (class 1259 OID 16535)
+-- TOC entry 4858 (class 1259 OID 16535)
 -- Name: idx_user_full_name; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -924,7 +919,15 @@ CREATE INDEX idx_user_full_name ON public."user" USING btree (full_name);
 
 
 --
--- TOC entry 4869 (class 1259 OID 16945)
+-- TOC entry 4912 (class 1259 OID 25504)
+-- Name: unique_price_meal_type_active; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX unique_price_meal_type_active ON public.price USING btree (meal_type) WHERE is_active;
+
+
+--
+-- TOC entry 4873 (class 1259 OID 16945)
 -- Name: uq_menu_image_week; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -932,7 +935,7 @@ CREATE UNIQUE INDEX uq_menu_image_week ON public.menu USING btree (menu_date) WH
 
 
 --
--- TOC entry 4941 (class 2620 OID 16825)
+-- TOC entry 4944 (class 2620 OID 16825)
 -- Name: department update_department_modtime; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
@@ -940,7 +943,7 @@ CREATE TRIGGER update_department_modtime BEFORE UPDATE ON public.department FOR 
 
 
 --
--- TOC entry 4944 (class 2620 OID 16826)
+-- TOC entry 4947 (class 2620 OID 16826)
 -- Name: dish update_dish_modtime; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
@@ -948,7 +951,7 @@ CREATE TRIGGER update_dish_modtime BEFORE UPDATE ON public.dish FOR EACH ROW EXE
 
 
 --
--- TOC entry 4945 (class 2620 OID 16827)
+-- TOC entry 4948 (class 2620 OID 16827)
 -- Name: menu update_menu_modtime; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
@@ -956,7 +959,7 @@ CREATE TRIGGER update_menu_modtime BEFORE UPDATE ON public.menu FOR EACH ROW EXE
 
 
 --
--- TOC entry 4946 (class 2620 OID 16828)
+-- TOC entry 4949 (class 2620 OID 16828)
 -- Name: order update_order_modtime; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
@@ -964,7 +967,7 @@ CREATE TRIGGER update_order_modtime BEFORE UPDATE ON public."order" FOR EACH ROW
 
 
 --
--- TOC entry 4943 (class 2620 OID 16830)
+-- TOC entry 4946 (class 2620 OID 16830)
 -- Name: permission update_permission_modtime; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
@@ -972,7 +975,7 @@ CREATE TRIGGER update_permission_modtime BEFORE UPDATE ON public.permission FOR 
 
 
 --
--- TOC entry 4942 (class 2620 OID 16829)
+-- TOC entry 4945 (class 2620 OID 16829)
 -- Name: role update_role_modtime; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
@@ -980,7 +983,7 @@ CREATE TRIGGER update_role_modtime BEFORE UPDATE ON public.role FOR EACH ROW EXE
 
 
 --
--- TOC entry 4947 (class 2620 OID 16849)
+-- TOC entry 4950 (class 2620 OID 16849)
 -- Name: system_config update_system_config_modtime; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
@@ -988,7 +991,7 @@ CREATE TRIGGER update_system_config_modtime BEFORE UPDATE ON public.system_confi
 
 
 --
--- TOC entry 4939 (class 2606 OID 16859)
+-- TOC entry 4942 (class 2606 OID 16859)
 -- Name: audit_log audit_log_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -997,7 +1000,7 @@ ALTER TABLE ONLY public.audit_log
 
 
 --
--- TOC entry 4910 (class 2606 OID 16717)
+-- TOC entry 4913 (class 2606 OID 16717)
 -- Name: department fk_department_created_by; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1006,7 +1009,7 @@ ALTER TABLE ONLY public.department
 
 
 --
--- TOC entry 4911 (class 2606 OID 16722)
+-- TOC entry 4914 (class 2606 OID 16722)
 -- Name: department fk_department_updated_by; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1015,7 +1018,7 @@ ALTER TABLE ONLY public.department
 
 
 --
--- TOC entry 4923 (class 2606 OID 16727)
+-- TOC entry 4926 (class 2606 OID 16727)
 -- Name: dish fk_dish_created_by; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1024,7 +1027,7 @@ ALTER TABLE ONLY public.dish
 
 
 --
--- TOC entry 4924 (class 2606 OID 16732)
+-- TOC entry 4927 (class 2606 OID 16732)
 -- Name: dish fk_dish_updated_by; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1033,7 +1036,7 @@ ALTER TABLE ONLY public.dish
 
 
 --
--- TOC entry 4934 (class 2606 OID 16647)
+-- TOC entry 4937 (class 2606 OID 16647)
 -- Name: ticket_exchange fk_exchange_buyer; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1042,7 +1045,7 @@ ALTER TABLE ONLY public.ticket_exchange
 
 
 --
--- TOC entry 4935 (class 2606 OID 16642)
+-- TOC entry 4938 (class 2606 OID 16642)
 -- Name: ticket_exchange fk_exchange_order; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1051,7 +1054,7 @@ ALTER TABLE ONLY public.ticket_exchange
 
 
 --
--- TOC entry 4928 (class 2606 OID 16601)
+-- TOC entry 4931 (class 2606 OID 16601)
 -- Name: menu_dish fk_menu_dish_dish; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1060,7 +1063,7 @@ ALTER TABLE ONLY public.menu_dish
 
 
 --
--- TOC entry 4929 (class 2606 OID 16596)
+-- TOC entry 4932 (class 2606 OID 16596)
 -- Name: menu_dish fk_menu_dish_menu; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1069,7 +1072,7 @@ ALTER TABLE ONLY public.menu_dish
 
 
 --
--- TOC entry 4925 (class 2606 OID 16737)
+-- TOC entry 4928 (class 2606 OID 16737)
 -- Name: menu fk_menu_updated_by; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1078,7 +1081,7 @@ ALTER TABLE ONLY public.menu
 
 
 --
--- TOC entry 4926 (class 2606 OID 16586)
+-- TOC entry 4929 (class 2606 OID 16586)
 -- Name: menu fk_menu_user; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1087,7 +1090,7 @@ ALTER TABLE ONLY public.menu
 
 
 --
--- TOC entry 4936 (class 2606 OID 16683)
+-- TOC entry 4939 (class 2606 OID 16683)
 -- Name: notification fk_notification_user; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1096,7 +1099,7 @@ ALTER TABLE ONLY public.notification
 
 
 --
--- TOC entry 4930 (class 2606 OID 16621)
+-- TOC entry 4933 (class 2606 OID 16621)
 -- Name: order fk_order_menu; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1105,7 +1108,7 @@ ALTER TABLE ONLY public."order"
 
 
 --
--- TOC entry 4931 (class 2606 OID 16626)
+-- TOC entry 4934 (class 2606 OID 16626)
 -- Name: order fk_order_original_user; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1114,7 +1117,7 @@ ALTER TABLE ONLY public."order"
 
 
 --
--- TOC entry 4932 (class 2606 OID 16772)
+-- TOC entry 4935 (class 2606 OID 16772)
 -- Name: order fk_order_updated_by; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1123,7 +1126,7 @@ ALTER TABLE ONLY public."order"
 
 
 --
--- TOC entry 4933 (class 2606 OID 16616)
+-- TOC entry 4936 (class 2606 OID 16616)
 -- Name: order fk_order_user; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1132,7 +1135,7 @@ ALTER TABLE ONLY public."order"
 
 
 --
--- TOC entry 4914 (class 2606 OID 16742)
+-- TOC entry 4917 (class 2606 OID 16742)
 -- Name: permission fk_permission_created_by; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1141,7 +1144,7 @@ ALTER TABLE ONLY public.permission
 
 
 --
--- TOC entry 4915 (class 2606 OID 16747)
+-- TOC entry 4918 (class 2606 OID 16747)
 -- Name: permission fk_permission_updated_by; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1150,7 +1153,7 @@ ALTER TABLE ONLY public.permission
 
 
 --
--- TOC entry 4937 (class 2606 OID 16711)
+-- TOC entry 4940 (class 2606 OID 16711)
 -- Name: refresh_token fk_refresh_token_user; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1159,7 +1162,7 @@ ALTER TABLE ONLY public.refresh_token
 
 
 --
--- TOC entry 4912 (class 2606 OID 16752)
+-- TOC entry 4915 (class 2606 OID 16752)
 -- Name: role fk_role_created_by; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1168,7 +1171,7 @@ ALTER TABLE ONLY public.role
 
 
 --
--- TOC entry 4921 (class 2606 OID 16562)
+-- TOC entry 4924 (class 2606 OID 16562)
 -- Name: role_permission fk_role_permission_permission; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1177,7 +1180,7 @@ ALTER TABLE ONLY public.role_permission
 
 
 --
--- TOC entry 4922 (class 2606 OID 16557)
+-- TOC entry 4925 (class 2606 OID 16557)
 -- Name: role_permission fk_role_permission_role; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1186,7 +1189,7 @@ ALTER TABLE ONLY public.role_permission
 
 
 --
--- TOC entry 4913 (class 2606 OID 16757)
+-- TOC entry 4916 (class 2606 OID 16757)
 -- Name: role fk_role_updated_by; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1195,7 +1198,7 @@ ALTER TABLE ONLY public.role
 
 
 --
--- TOC entry 4916 (class 2606 OID 16762)
+-- TOC entry 4919 (class 2606 OID 16762)
 -- Name: user fk_user_created_by; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1204,7 +1207,7 @@ ALTER TABLE ONLY public."user"
 
 
 --
--- TOC entry 4917 (class 2606 OID 16530)
+-- TOC entry 4920 (class 2606 OID 16530)
 -- Name: user fk_user_department; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1213,7 +1216,7 @@ ALTER TABLE ONLY public."user"
 
 
 --
--- TOC entry 4919 (class 2606 OID 16547)
+-- TOC entry 4922 (class 2606 OID 16547)
 -- Name: user_role fk_user_role_role; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1222,7 +1225,7 @@ ALTER TABLE ONLY public.user_role
 
 
 --
--- TOC entry 4920 (class 2606 OID 16542)
+-- TOC entry 4923 (class 2606 OID 16542)
 -- Name: user_role fk_user_role_user; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1231,7 +1234,7 @@ ALTER TABLE ONLY public.user_role
 
 
 --
--- TOC entry 4918 (class 2606 OID 16767)
+-- TOC entry 4921 (class 2606 OID 16767)
 -- Name: user fk_user_updated_by; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1240,7 +1243,7 @@ ALTER TABLE ONLY public."user"
 
 
 --
--- TOC entry 4940 (class 2606 OID 16892)
+-- TOC entry 4943 (class 2606 OID 16892)
 -- Name: payment fkcp0yo0h2iv9p04x3ydel5ymjs; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1249,7 +1252,7 @@ ALTER TABLE ONLY public.payment
 
 
 --
--- TOC entry 4927 (class 2606 OID 16910)
+-- TOC entry 4930 (class 2606 OID 16910)
 -- Name: menu fki1jwmnelm6en1e4ysce8klyej; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1258,7 +1261,7 @@ ALTER TABLE ONLY public.menu
 
 
 --
--- TOC entry 4938 (class 2606 OID 16844)
+-- TOC entry 4941 (class 2606 OID 16844)
 -- Name: system_config system_config_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1266,11 +1269,11 @@ ALTER TABLE ONLY public.system_config
     ADD CONSTRAINT system_config_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public."user"(id);
 
 
--- Completed on 2026-07-28 09:47:43
+-- Completed on 2026-07-30 09:12:07
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict qhxuZS93EA3u6IbJqezgkgyDke37DjS2j7XXmePUPjRdzaa0PjzZsbitmalQEgV
+\unrestrict Mq97QjUeWhyJejMZD116OUxviacAv4wH3HRWkIyLw4jzp2Bh6rjx1eU509D2sfe
 

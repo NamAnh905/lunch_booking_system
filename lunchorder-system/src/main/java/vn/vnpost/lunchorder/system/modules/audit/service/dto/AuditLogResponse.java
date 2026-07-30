@@ -16,6 +16,7 @@ public class AuditLogResponse {
     private String action;
     private String targetEntity;
     private Long targetId;
+    private String oldValue;
     private String newValue;
     private String ipAddress;
     private OffsetDateTime createdAt;

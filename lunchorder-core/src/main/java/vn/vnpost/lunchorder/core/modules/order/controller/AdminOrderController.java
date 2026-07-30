@@ -25,7 +25,7 @@ public class AdminOrderController {
     @GetMapping
     @PreAuthorize("hasAuthority('VIEW_ALL_ORDERS')")
     public ApiResponse<AdminOrderListResponse> getOrders(
-            @RequestParam(value = "date", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(value = "status", required = false) String status) {
         return ApiResponse.<AdminOrderListResponse>builder()
                 .result(orderService.getAdminOrders(date, status))

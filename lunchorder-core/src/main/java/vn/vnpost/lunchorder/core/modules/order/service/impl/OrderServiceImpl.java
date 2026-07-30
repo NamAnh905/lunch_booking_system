@@ -16,6 +16,7 @@ import vn.vnpost.lunchorder.core.modules.order.service.dto.*;
 import vn.vnpost.lunchorder.core.modules.order.service.mapstruct.OrderMapper;
 import vn.vnpost.lunchorder.system.modules.user.service.UserLookupService;
 
+import vn.vnpost.lunchorder.common.enums.MealType;
 import vn.vnpost.lunchorder.common.enums.OrderStatus;
 import vn.vnpost.lunchorder.common.enums.TicketSource;
 import vn.vnpost.lunchorder.common.enums.TicketExchangeStatus;
@@ -23,19 +24,19 @@ import vn.vnpost.lunchorder.common.enums.TicketExchangeStatus;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.repository.TicketExchangeRepository;
 import vn.vnpost.lunchorder.core.modules.price.service.MealPricePolicy;
 import vn.vnpost.lunchorder.core.policy.CutOffPolicy;
+import vn.vnpost.lunchorder.core.policy.OrderableDates;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 @Transactional(readOnly = true)
 public class OrderServiceImpl implements OrderService {
+
+    private static final String FAILED_ITEM_STATUS = "FAILED";
 
     private final OrderRepository orderRepository;
     private final MenuRepository menuRepository;
@@ -59,92 +60,112 @@ public class OrderServiceImpl implements OrderService {
             return List.of();
         }
         return orderRepository.findDepartmentMealListByDate(
-                user.getDepartment().getId(), LocalDate.now(), OrderStatus.CANCELLED);
+                user.getDepartment().getId(), cutOffPolicy.today(), OrderStatus.CANCELLED);
     }
 
     @Override
     @Transactional
     public List<OrderResponse> createOrders(Long userId, OrderCreateRequest request) {
         User user = userLookupService.getById(userId);
+        OrderableDates orderableDates = OrderableDates.snapshot(cutOffPolicy);
+        MealPrices mealPrices = MealPrices.snapshot(mealPricePolicy);
 
-        Set<LocalDate> holidays = cutOffPolicy.getHolidayDates();
-        LocalDate maxOrderableDate = cutOffPolicy.getMaxOrderableDate();
-
-        List<OrderResponse> responses = new ArrayList<>();
-        for (OrderItemRequest item : request.getOrders()) {
-            LocalDate orderDate = item.getOrderDate();
-            boolean isSpecial = Boolean.TRUE.equals(item.getIsSpecial());
-
-            try {
-                if (cutOffPolicy.isWeekend(orderDate) || holidays.contains(orderDate)) {
-                    throw new AppException(ErrorCode.ORDER_DATE_NOT_ALLOWED);
-                }
-
-                if (orderDate.isAfter(maxOrderableDate)) {
-                    throw new AppException(ErrorCode.ORDER_DATE_TOO_FAR);
-                }
-
-                if (cutOffPolicy.isCutOffReached(orderDate)) {
-                    throw new AppException(ErrorCode.ORDER_CUTOFF_REACHED);
-                }
-
-                Menu menu = resolveMenu(orderDate, isSpecial);
-
-                Optional<Order> existingOrderOpt = orderRepository.findByUserIdAndOrderDate(userId, orderDate);
-                if (existingOrderOpt.isPresent()) {
-                    Order existingOrder = existingOrderOpt.get();
-                    if (existingOrder.getStatus() == OrderStatus.CANCELLED) {
-                        existingOrder.setStatus(OrderStatus.PENDING);
-                        existingOrder.setMenu(menu);
-                        existingOrder.setPrice(resolveOrderPrice(menu, isSpecial));
-                        existingOrder.setTicketSource(TicketSource.STANDARD);
-                        existingOrder.setIsPrinted(false);
-                        existingOrder.setOriginalUser(user);
-                        responses.add(orderMapper.toDto(existingOrder));
-                        continue;
-                    } else {
-                        throw new AppException(ErrorCode.ORDER_ALREADY_EXISTS);
-                    }
-                }
-
-                Order order = new Order();
-                order.setUser(user);
-                order.setOrderDate(orderDate);
-                order.setMenu(menu);
-                order.setPrice(resolveOrderPrice(menu, isSpecial));
-                order.setStatus(OrderStatus.PENDING);
-                order.setTicketSource(TicketSource.STANDARD);
-                order.setOriginalUser(user);
-                order.setIsPrinted(false);
-
-                order = orderItemPersister.persist(order);
-                responses.add(orderMapper.toDto(order));
-            } catch (AppException e) {
-                OrderResponse failedResponse = new OrderResponse();
-                failedResponse.setStatus("FAILED");
-                failedResponse.setErrorMessage(e.getErrorCode().getMessage());
-                failedResponse.setMenuDate(orderDate);
-                responses.add(failedResponse);
-            }
-        }
-        return responses;
+        return request.getOrders().stream()
+                .map(item -> createSingleOrder(user, item, orderableDates, mealPrices))
+                .toList();
     }
 
-    private Menu resolveMenu(LocalDate orderDate, boolean isSpecial) {
-        BigDecimal targetAmount = mealPricePolicy.resolvePrice(isSpecial);
+    private OrderResponse createSingleOrder(User user, OrderItemRequest item,
+            OrderableDates orderableDates, MealPrices mealPrices) {
+        try {
+            orderableDates.assertOrderable(item.getOrderDate());
+            return orderMapper.toDto(saveOrder(user, item, mealPrices));
+        } catch (AppException e) {
+            return failedResponse(item.getOrderDate(), e.getErrorCode().getMessage());
+        }
+    }
 
-        return menuRepository.findByMenuDateAndPrice_Amount(orderDate, targetAmount)
+    private OrderResponse failedResponse(LocalDate orderDate, String errorMessage) {
+        OrderResponse response = new OrderResponse();
+        response.setStatus(FAILED_ITEM_STATUS);
+        response.setErrorMessage(errorMessage);
+        response.setMenuDate(orderDate);
+        return response;
+    }
+
+    private Order saveOrder(User user, OrderItemRequest item, MealPrices mealPrices) {
+        LocalDate orderDate = item.getOrderDate();
+        MealType requestedType = Boolean.TRUE.equals(item.getIsSpecial()) ? MealType.SPECIAL : MealType.NORMAL;
+
+        Menu menu = resolveMenu(orderDate, requestedType);
+        MealType mealType = resolveMealType(menu, requestedType);
+        BigDecimal price = resolveOrderPrice(menu, mealType, mealPrices);
+
+        return orderRepository.findByUserIdAndOrderDate(user.getId(), orderDate)
+                .map(existing -> reactivate(existing, user, menu, mealType, price))
+                .orElseGet(() -> orderItemPersister.persist(newOrder(user, orderDate, menu, mealType, price)));
+    }
+
+    private Order reactivate(Order existing, User user, Menu menu, MealType mealType, BigDecimal price) {
+        if (existing.getStatus() != OrderStatus.CANCELLED) {
+            throw new AppException(ErrorCode.ORDER_ALREADY_EXISTS);
+        }
+
+        existing.setStatus(OrderStatus.PENDING);
+        existing.setMenu(menu);
+        existing.setMealType(mealType);
+        existing.setPrice(price);
+        existing.setTicketSource(TicketSource.STANDARD);
+        existing.setIsPrinted(false);
+        existing.setOriginalUser(user);
+        return existing;
+    }
+
+    private Order newOrder(User user, LocalDate orderDate, Menu menu, MealType mealType, BigDecimal price) {
+        Order order = new Order();
+        order.setUser(user);
+        order.setOrderDate(orderDate);
+        order.setMenu(menu);
+        order.setMealType(mealType);
+        order.setPrice(price);
+        order.setStatus(OrderStatus.PENDING);
+        order.setTicketSource(TicketSource.STANDARD);
+        order.setOriginalUser(user);
+        order.setIsPrinted(false);
+        return order;
+    }
+
+    private Menu resolveMenu(LocalDate orderDate, MealType requestedType) {
+        return menuRepository.findByMenuDateAndPrice_MealType(orderDate, requestedType)
                 .orElseGet(() -> {
                     List<Menu> menus = menuRepository.findByMenuDate(orderDate);
                     return menus.isEmpty() ? null : menus.get(0);
                 });
     }
 
-    private BigDecimal resolveOrderPrice(Menu menu, boolean isSpecial) {
+    private MealType resolveMealType(Menu menu, MealType requestedType) {
+        if (menu != null && menu.getPrice() != null && menu.getPrice().getMealType() != null) {
+            return menu.getPrice().getMealType();
+        }
+        return requestedType;
+    }
+
+    private BigDecimal resolveOrderPrice(Menu menu, MealType mealType, MealPrices mealPrices) {
         if (menu != null && menu.getPrice() != null && menu.getPrice().getAmount() != null) {
             return menu.getPrice().getAmount();
         }
-        return mealPricePolicy.resolvePrice(isSpecial);
+        return mealPrices.forType(mealType);
+    }
+
+    private record MealPrices(BigDecimal normal, BigDecimal special) {
+
+        static MealPrices snapshot(MealPricePolicy mealPricePolicy) {
+            return new MealPrices(mealPricePolicy.getNormalPrice(), mealPricePolicy.getSpecialPrice());
+        }
+
+        BigDecimal forType(MealType mealType) {
+            return mealType == MealType.SPECIAL ? special : normal;
+        }
     }
 
     @Override

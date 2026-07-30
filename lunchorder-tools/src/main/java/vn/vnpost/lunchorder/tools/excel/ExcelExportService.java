@@ -1,5 +1,6 @@
 package vn.vnpost.lunchorder.tools.excel;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
@@ -13,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
+@Slf4j
 public class ExcelExportService {
 
     public <T> ByteArrayInputStream exportToExcel(List<T> data, String sheetName) throws IOException {
@@ -71,13 +73,14 @@ public class ExcelExportService {
                     Object value = null;
 
                     try {
-                        if (item instanceof Field) {
-                            value = ((Field) item).get(dataItem);
-                        } else if (item instanceof Method) {
-                            value = ((Method) item).invoke(dataItem);
+                        if (item instanceof Field field) {
+                            value = field.get(dataItem);
+                        } else if (item instanceof Method method) {
+                            value = method.invoke(dataItem);
                         }
-                    } catch (Exception e) {
-                        e.printStackTrace();
+                    } catch (ReflectiveOperationException e) {
+                        log.error("Failed to read Excel column value from {}", clazz.getName(), e);
+                        throw new IOException("Failed to read Excel column value from " + clazz.getName(), e);
                     }
 
                     if (value != null) {

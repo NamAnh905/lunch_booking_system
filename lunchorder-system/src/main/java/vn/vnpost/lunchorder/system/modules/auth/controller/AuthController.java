@@ -1,13 +1,9 @@
 package vn.vnpost.lunchorder.system.modules.auth.controller;
 
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,8 +26,10 @@ import vn.vnpost.lunchorder.system.modules.auth.service.dto.RefreshRequest;
 import vn.vnpost.lunchorder.system.modules.auth.service.dto.TokenResponse;
 import vn.vnpost.lunchorder.system.modules.user.service.UserService;
 import vn.vnpost.lunchorder.system.modules.user.service.dto.UserResponse;
+import vn.vnpost.lunchorder.system.security.cookie.AuthCookieManager;
 import vn.vnpost.lunchorder.system.security.jwt.UserPrincipal;
-import vn.vnpost.lunchorder.system.security.ratelimit.LoginAttemptLimiter;
+
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/auth")
@@ -40,26 +38,19 @@ public class AuthController {
 
     private final AuthService authService;
     private final UserService userService;
-    private final LoginAttemptLimiter loginAttemptLimiter;
-
-    @Value("${jwt.remember-me-duration:2592000}")
-    private long rememberMeDuration;
+    private final AuthCookieManager authCookieManager;
 
     @PostMapping("/introspect")
     public ApiResponse<IntrospectResponse> introspect(@RequestBody @Valid IntrospectRequest request) {
-        IntrospectResponse response = authService.introspect(request);
         return ApiResponse.<IntrospectResponse>builder()
-                .result(response)
+                .result(authService.introspect(request))
                 .build();
     }
 
     @GetMapping("/me")
     public ApiResponse<UserResponse> getCurrentUser(@AuthenticationPrincipal UserPrincipal principal) {
-        if (principal == null) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
         return ApiResponse.<UserResponse>builder()
-                .result(userService.findByUsername(principal.getUsername()))
+                .result(userService.findByUsername(requireAuthenticated(principal).getUsername()))
                 .build();
     }
 
@@ -67,11 +58,8 @@ public class AuthController {
     public ApiResponse<UserResponse> updateCurrentUser(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestBody @Valid ProfileUpdateRequest request) {
-        if (principal == null) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
         return ApiResponse.<UserResponse>builder()
-                .result(userService.updateProfile(principal.getUsername(), request))
+                .result(userService.updateProfile(requireAuthenticated(principal).getUsername(), request))
                 .build();
     }
 
@@ -79,10 +67,7 @@ public class AuthController {
     public ApiResponse<Void> changePassword(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestBody @Valid ChangePasswordRequest request) {
-        if (principal == null) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
-        userService.changePassword(principal.getUsername(), request);
+        userService.changePassword(requireAuthenticated(principal).getUsername(), request);
         return ApiResponse.<Void>builder()
                 .message("Đổi mật khẩu thành công")
                 .build();
@@ -93,21 +78,9 @@ public class AuthController {
             @RequestBody @Valid LoginRequest request,
             HttpServletRequest httpServletRequest,
             HttpServletResponse httpServletResponse) {
-        String clientIp = resolveClientIp(httpServletRequest);
-        loginAttemptLimiter.checkAllowed(clientIp, request.getUsername());
+        TokenResponse response = authService.login(request, httpServletRequest.getRemoteAddr());
+        authCookieManager.write(httpServletRequest, httpServletResponse, response.getToken(), response.isRememberMe());
 
-        TokenResponse response;
-        try {
-            response = authService.login(request);
-        } catch (AppException e) {
-            if (e.getErrorCode() == ErrorCode.UNAUTHENTICATED) {
-                loginAttemptLimiter.recordFailure(clientIp, request.getUsername());
-            }
-            throw e;
-        }
-        loginAttemptLimiter.recordSuccess(clientIp, request.getUsername());
-
-        setCookie(httpServletRequest, httpServletResponse, response.getToken(), cookieMaxAge(response.isRememberMe()));
         return ApiResponse.<TokenResponse>builder()
                 .result(response)
                 .build();
@@ -118,21 +91,9 @@ public class AuthController {
             @RequestBody(required = false) LogoutRequest request,
             HttpServletRequest httpServletRequest,
             HttpServletResponse httpServletResponse) {
-        
-        String token = null;
-        if (request != null && StringUtils.hasText(request.getToken())) {
-            token = request.getToken();
-        } else {
-            token = getCookieValue(httpServletRequest, "token");
-        }
-
-        if (token != null) {
-            LogoutRequest serviceRequest = new LogoutRequest();
-            serviceRequest.setToken(token);
-            authService.logout(serviceRequest);
-        }
-
-        setCookie(httpServletRequest, httpServletResponse, null, 0);
+        resolveToken(request == null ? null : request.getToken(), httpServletRequest)
+                .ifPresent(authService::logout);
+        authCookieManager.clear(httpServletRequest, httpServletResponse);
 
         return ApiResponse.<Void>builder()
                 .build();
@@ -143,56 +104,28 @@ public class AuthController {
             @RequestBody(required = false) RefreshRequest request,
             HttpServletRequest httpServletRequest,
             HttpServletResponse httpServletResponse) {
-        
-        String token = null;
-        if (request != null && StringUtils.hasText(request.getToken())) {
-            token = request.getToken();
-        } else {
-            token = getCookieValue(httpServletRequest, "token");
-        }
+        String token = resolveToken(request == null ? null : request.getToken(), httpServletRequest)
+                .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
 
-        if (!StringUtils.hasText(token)) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
-
-        RefreshRequest serviceRequest = new RefreshRequest();
-        serviceRequest.setToken(token);
-
-        TokenResponse response = authService.refreshToken(serviceRequest);
-        setCookie(httpServletRequest, httpServletResponse, response.getToken(), cookieMaxAge(response.isRememberMe()));
+        TokenResponse response = authService.refreshToken(token);
+        authCookieManager.write(httpServletRequest, httpServletResponse, response.getToken(), response.isRememberMe());
 
         return ApiResponse.<TokenResponse>builder()
                 .result(response)
                 .build();
     }
 
-    private long cookieMaxAge(boolean rememberMe) {
-        return rememberMe ? rememberMeDuration : -1;
-    }
-
-    private void setCookie(HttpServletRequest request, HttpServletResponse response, String token, long maxAge) {
-        ResponseCookie cookie = ResponseCookie.from("token", token != null ? token : "")
-                .httpOnly(true)
-                .secure(request.isSecure())
-                .path("/")
-                .maxAge(token != null ? maxAge : 0)
-                .sameSite("Lax")
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-    }
-
-    private String resolveClientIp(HttpServletRequest request) {
-        return request.getRemoteAddr();
-    }
-
-    private String getCookieValue(HttpServletRequest request, String name) {
-        if (request.getCookies() != null) {
-            for (Cookie cookie : request.getCookies()) {
-                if (name.equals(cookie.getName())) {
-                    return cookie.getValue();
-                }
-            }
+    private Optional<String> resolveToken(String bodyToken, HttpServletRequest request) {
+        if (StringUtils.hasText(bodyToken)) {
+            return Optional.of(bodyToken);
         }
-        return null;
+        return authCookieManager.readToken(request).filter(StringUtils::hasText);
+    }
+
+    private UserPrincipal requireAuthenticated(UserPrincipal principal) {
+        if (principal == null) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+        return principal;
     }
 }

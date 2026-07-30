@@ -34,21 +34,14 @@ public class OrderSummaryServiceImpl implements OrderSummaryService {
         BigDecimal normalPrice = mealPricePolicy.getNormalPrice();
         List<OrderSummaryRow> rows = orderSummaryRepository.findDailySummary(date, departmentId, normalPrice);
 
-        List<OrderSummaryItemResponse> items = rows.stream().map(row -> OrderSummaryItemResponse.builder()
-                .userId(row.getUserId())
-                .fullName(row.getFullName())
-                .departmentName(row.getDepartmentName())
-                .normalMealCount(row.getNormalMealCount().intValue())
-                .specialMealCount(row.getSpecialMealCount().intValue())
-                .totalAmount(row.getTotalAmount())
-                .build()).toList();
+        List<OrderSummaryItemResponse> items = toItems(rows);
+        SummaryTotals totals = SummaryTotals.of(items);
 
         return DailyOrderSummaryResponse.builder()
                 .date(date)
-                .totalNormalMeals(items.stream().mapToInt(OrderSummaryItemResponse::getNormalMealCount).sum())
-                .totalSpecialMeals(items.stream().mapToInt(OrderSummaryItemResponse::getSpecialMealCount).sum())
-                .totalAmount(items.stream().map(OrderSummaryItemResponse::getTotalAmount)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add))
+                .totalNormalMeals(totals.normalMeals())
+                .totalSpecialMeals(totals.specialMeals())
+                .totalAmount(totals.amount())
                 .items(items)
                 .build();
     }
@@ -58,14 +51,8 @@ public class OrderSummaryServiceImpl implements OrderSummaryService {
         BigDecimal normalPrice = mealPricePolicy.getNormalPrice();
         List<OrderSummaryRow> rows = orderSummaryRepository.findMonthlySummary(month, year, departmentId, normalPrice);
 
-        List<OrderSummaryItemResponse> items = rows.stream().map(row -> OrderSummaryItemResponse.builder()
-                .userId(row.getUserId())
-                .fullName(row.getFullName())
-                .departmentName(row.getDepartmentName())
-                .normalMealCount(row.getNormalMealCount().intValue())
-                .specialMealCount(row.getSpecialMealCount().intValue())
-                .totalAmount(row.getTotalAmount())
-                .build()).toList();
+        List<OrderSummaryItemResponse> items = toItems(rows);
+        SummaryTotals totals = SummaryTotals.of(items);
 
         List<DailyMealCountResponse> dailyCounts = orderSummaryRepository
                 .findMonthlyDailyCounts(month, year, departmentId).stream()
@@ -78,13 +65,34 @@ public class OrderSummaryServiceImpl implements OrderSummaryService {
         return MonthlyOrderSummaryResponse.builder()
                 .month(month)
                 .year(year)
-                .totalNormalMeals(items.stream().mapToInt(OrderSummaryItemResponse::getNormalMealCount).sum())
-                .totalSpecialMeals(items.stream().mapToInt(OrderSummaryItemResponse::getSpecialMealCount).sum())
-                .totalAmount(items.stream().map(OrderSummaryItemResponse::getTotalAmount)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add))
+                .totalNormalMeals(totals.normalMeals())
+                .totalSpecialMeals(totals.specialMeals())
+                .totalAmount(totals.amount())
                 .items(items)
                 .dailyCounts(dailyCounts)
                 .build();
+    }
+
+    private List<OrderSummaryItemResponse> toItems(List<OrderSummaryRow> rows) {
+        return rows.stream().map(row -> OrderSummaryItemResponse.builder()
+                .userId(row.getUserId())
+                .fullName(row.getFullName())
+                .departmentName(row.getDepartmentName())
+                .normalMealCount(row.getNormalMealCount().intValue())
+                .specialMealCount(row.getSpecialMealCount().intValue())
+                .totalAmount(row.getTotalAmount())
+                .build()).toList();
+    }
+
+    private record SummaryTotals(int normalMeals, int specialMeals, BigDecimal amount) {
+
+        static SummaryTotals of(List<OrderSummaryItemResponse> items) {
+            return new SummaryTotals(
+                    items.stream().mapToInt(OrderSummaryItemResponse::getNormalMealCount).sum(),
+                    items.stream().mapToInt(OrderSummaryItemResponse::getSpecialMealCount).sum(),
+                    items.stream().map(OrderSummaryItemResponse::getTotalAmount)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add));
+        }
     }
 
     @Override
@@ -101,7 +109,7 @@ public class OrderSummaryServiceImpl implements OrderSummaryService {
         BigDecimal specialPrice = mealPricePolicy.getSpecialPrice();
 
         List<MonthlyOrderDetail> detailRecords = orderSummaryRepository.findMonthlyOrderDetails(month, year,
-                departmentId, normalPrice);
+                departmentId);
 
         return excelHelper.exportMonthlyMatrixExcel(month, year, summary, detailRecords, normalPrice, specialPrice);
     }

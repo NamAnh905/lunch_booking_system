@@ -22,8 +22,8 @@ import java.util.List;
 /**
  * Once {@code TICKET_LOCK_TIME} on the menu date has passed: reverts market
  * tickets still {@code OPEN} to their original owner (who must then use the
- * ticket themselves), and confirms all remaining {@code PENDING} orders for
- * that date. Both actions fire from the same config value because the order
+ * ticket themselves), and confirms every remaining {@code PENDING} order on or
+ * before that date. Both actions fire from the same config value because the order
  * list is only final once the market is closed — there is no reason to
  * confirm earlier or later than that.
  *
@@ -75,7 +75,7 @@ public class TicketExchangeAutoRevertScheduler {
 
     private void confirmPendingOrders(LocalDate today, LocalTime lockTime) {
         try {
-            int confirmed = orderRepository.updateStatusByOrderDateAndCurrentStatus(
+            int confirmed = orderRepository.updateStatusByOrderDateLessThanEqualAndCurrentStatus(
                     today, OrderStatus.PENDING, OrderStatus.CONFIRMED);
             if (confirmed > 0) {
                 log.info("Auto-confirm: {} order(s) confirmed for date {} past lock time {}", confirmed, today, lockTime);

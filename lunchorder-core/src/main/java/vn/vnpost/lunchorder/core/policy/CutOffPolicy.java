@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import vn.vnpost.lunchorder.core.modules.systemconfig.repository.SystemConfigRepository;
 
+import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -33,6 +34,11 @@ public class CutOffPolicy {
     private static final int MAX_ADVANCE_MONTHS = 3;
 
     private final SystemConfigRepository systemConfigRepository;
+    private final Clock clock;
+
+    public LocalDate today() {
+        return LocalDate.now(clock);
+    }
 
     public LocalTime getCutOffTime() {
         return readTime(CUT_OFF_TIME_KEY, DEFAULT_CUT_OFF_TIME);
@@ -56,19 +62,19 @@ public class CutOffPolicy {
     }
 
     public boolean isCutOffReached(LocalDate menuDate) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = today();
         LocalDate cutoffDate = menuDate.minusDays(1);
         if (today.isAfter(cutoffDate)) {
             return true;
         }
         if (today.isEqual(cutoffDate)) {
-            return LocalTime.now().isAfter(getCutOffTime());
+            return LocalTime.now(clock).isAfter(getCutOffTime());
         }
         return false;
     }
- 
+
     public boolean isWithinExchangeWindow(LocalDate menuDate) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         LocalDateTime windowStart = menuDate.minusDays(1).atTime(getCutOffTime());
         LocalDateTime windowEnd = menuDate.atTime(getTicketLockTime());
         return !now.isBefore(windowStart) && !now.isAfter(windowEnd);
@@ -105,6 +111,6 @@ public class CutOffPolicy {
     }
 
     public LocalDate getMaxOrderableDate() {
-        return YearMonth.now().plusMonths(MAX_ADVANCE_MONTHS).atEndOfMonth();
+        return YearMonth.now(clock).plusMonths(MAX_ADVANCE_MONTHS).atEndOfMonth();
     }
 }

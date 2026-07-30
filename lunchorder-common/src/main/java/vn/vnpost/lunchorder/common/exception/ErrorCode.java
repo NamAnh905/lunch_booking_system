@@ -68,6 +68,7 @@ public enum ErrorCode {
 
     PRICE_NOT_FOUND(13001, "Price not found", HttpStatus.NOT_FOUND),
     PRICE_ALREADY_EXISTS(13002, "Price already exists", HttpStatus.BAD_REQUEST),
+    PRICE_MEAL_TYPE_ALREADY_ACTIVE(13003, "An active price already exists for this meal type", HttpStatus.BAD_REQUEST),
 
     ADMIN_REPORT_EMAIL_NOT_CONFIGURED(14001, "Admin report email is not configured in system settings", HttpStatus.INTERNAL_SERVER_ERROR),
     EXPORT_FAILED(14002, "Failed to export data to Excel", HttpStatus.INTERNAL_SERVER_ERROR),

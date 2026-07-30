@@ -2,6 +2,7 @@ package vn.vnpost.lunchorder.system.modules.permission.service.impl;
 
 import java.util.List;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
+import vn.vnpost.lunchorder.common.audit.AuditEvent;
 import vn.vnpost.lunchorder.common.base.PageResponse;
 import vn.vnpost.lunchorder.common.constant.PaginationConstants;
 import vn.vnpost.lunchorder.system.modules.permission.entity.Permission;
@@ -29,6 +31,7 @@ import vn.vnpost.lunchorder.system.modules.permission.service.mapstruct.Permissi
 public class PermissionServiceImpl implements PermissionService {
     private final PermissionRepository permissionRepository;
     private final PermissionMapper permissionMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -39,7 +42,10 @@ public class PermissionServiceImpl implements PermissionService {
         }
         Permission permission = permissionMapper.toEntity(request);
         Permission savedPermission = permissionRepository.save(permission);
-        return permissionMapper.toDto(savedPermission);
+        PermissionResponse created = permissionMapper.toDto(savedPermission);
+        eventPublisher.publishEvent(new AuditEvent(
+                "CREATE_PERMISSION", "Permission", savedPermission.getId(), null, created));
+        return created;
     }
 
     @Override
@@ -48,10 +54,13 @@ public class PermissionServiceImpl implements PermissionService {
     public PermissionResponse update(Long id, PermissionUpdateRequest request) {
         Permission permission = permissionRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.PERMISSION_NOT_FOUND));
+        PermissionResponse before = permissionMapper.toDto(permission);
 
         permissionMapper.update(request, permission);
         Permission savedPermission = permissionRepository.save(permission);
-        return permissionMapper.toDto(savedPermission);
+        PermissionResponse after = permissionMapper.toDto(savedPermission);
+        eventPublisher.publishEvent(new AuditEvent("UPDATE_PERMISSION", "Permission", id, before, after));
+        return after;
     }
 
     @Override
@@ -60,7 +69,10 @@ public class PermissionServiceImpl implements PermissionService {
     public void delete(Long id) {
         Permission permission = permissionRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.PERMISSION_NOT_FOUND));
+        PermissionResponse before = permissionMapper.toDto(permission);
+
         permissionRepository.delete(permission);
+        eventPublisher.publishEvent(new AuditEvent("DELETE_PERMISSION", "Permission", id, before, null));
     }
 
     @Override
@@ -82,8 +94,7 @@ public class PermissionServiceImpl implements PermissionService {
     @Override
     @Cacheable(value = "permissions", key = "'findAll:' + #keyword + ':' + #page + ':' + #size")
     public PageResponse<PermissionResponse> findAll(String keyword, int page, int size) {
-        int pageNumber = Math.max(0, page - 1);
-        Pageable pageable = PageRequest.of(pageNumber, PaginationConstants.clampSize(size));
+        Pageable pageable = PaginationConstants.toPageable(page, size);
 
         Page<Permission> permissionPage;
         if (keyword != null && !keyword.trim().isEmpty()) {
@@ -92,14 +103,6 @@ public class PermissionServiceImpl implements PermissionService {
             permissionPage = permissionRepository.findAll(pageable);
         }
 
-        List<PermissionResponse> dtoList = permissionMapper.toDtoList(permissionPage.getContent());
-
-        return PageResponse.<PermissionResponse>builder()
-                .currentPage(page)
-                .totalPages(permissionPage.getTotalPages())
-                .pageSize(size)
-                .totalElements(permissionPage.getTotalElements())
-                .data(dtoList)
-                .build();
+        return PageResponse.of(permissionPage, permissionMapper.toDtoList(permissionPage.getContent()), page, size);
     }
 }

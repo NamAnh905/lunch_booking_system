@@ -6,9 +6,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import vn.vnpost.lunchorder.core.modules.menu.entity.Menu;
+import vn.vnpost.lunchorder.common.enums.MealType;
 import vn.vnpost.lunchorder.common.enums.MenuType;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -18,7 +18,7 @@ import org.springframework.data.domain.Sort;
 public interface MenuRepository extends JpaRepository<Menu, Long> {
        List<Menu> findByMenuDate(LocalDate menuDate);
 
-       Optional<Menu> findByMenuDateAndPrice_Amount(LocalDate menuDate, BigDecimal amount);
+       Optional<Menu> findByMenuDateAndPrice_MealType(LocalDate menuDate, MealType mealType);
 
        List<Menu> findByMenuDateBetween(LocalDate startDate, LocalDate endDate);
 

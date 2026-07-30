@@ -16,7 +16,6 @@ public interface DepartmentService {
 
     DepartmentResponse findByCode(String code);
 
-    List<DepartmentResponse> search(String keyword);
 
     List<DepartmentResponse> getAll();
 

@@ -3,7 +3,6 @@ package vn.vnpost.lunchorder.core.modules.price.controller;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -58,14 +57,6 @@ public class PriceController {
             @RequestParam(required = false) String keyword) {
         return ApiResponse.<PageResponse<PriceResponse>>builder()
                 .result(priceService.findAll(page, size, keyword))
-                .build();
-    }
-
-    @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('MANAGE_PRICE')")
-    public ApiResponse<PriceResponse> findById(@PathVariable Long id) {
-        return ApiResponse.<PriceResponse>builder()
-                .result(priceService.findById(id))
                 .build();
     }
 

@@ -14,7 +14,6 @@ public interface DepartmentRepository extends JpaRepository<Department, Long> {
 
     Optional<Department> findByName(String name);
 
-    List<Department> findByCodeContainingIgnoreCaseOrNameContainingIgnoreCase(String code, String name);
 
     Page<Department> findByCodeContainingIgnoreCaseOrNameContainingIgnoreCase(
             String code, String name, Pageable pageable);

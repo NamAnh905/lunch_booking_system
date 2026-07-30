@@ -8,9 +8,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import vn.vnpost.lunchorder.common.base.ApiResponse;
+import vn.vnpost.lunchorder.common.base.ExcelDownload;
 import vn.vnpost.lunchorder.common.base.PageResponse;
-import vn.vnpost.lunchorder.common.exception.AppException;
-import vn.vnpost.lunchorder.common.exception.ErrorCode;
 import vn.vnpost.lunchorder.core.modules.menu.service.MenuService;
 import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuCreateRequest;
 import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuImageCreateRequest;
@@ -21,11 +20,6 @@ import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import vn.vnpost.lunchorder.tools.excel.ExcelExportService;
 
 @RestController
 @RequiredArgsConstructor
@@ -34,7 +28,6 @@ import vn.vnpost.lunchorder.tools.excel.ExcelExportService;
 public class MenuController {
 
     private final MenuService menuService;
-    private final ExcelExportService excelExportService;
 
     @PostMapping
     @PreAuthorize("hasAuthority('MANAGE_MENUS')")
@@ -88,15 +81,6 @@ public class MenuController {
                 .build();
     }
 
-    @GetMapping("/by-date")
-    @PreAuthorize("hasAuthority('MANAGE_MENUS')")
-    public ApiResponse<List<MenuResponse>> getMenusByDate(
-            @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return ApiResponse.<List<MenuResponse>>builder()
-                .result(menuService.findByDate(date))
-                .build();
-    }
-
     @GetMapping("/weekly")
     @PreAuthorize("hasAuthority('MANAGE_MENUS')")
     public ApiResponse<List<MenuResponse>> getWeeklyMenus(
@@ -111,25 +95,6 @@ public class MenuController {
     @PreAuthorize("hasAuthority('MANAGE_MENUS')")
     public ResponseEntity<byte[]> export(
             @RequestParam(value = "keyword", required = false) String keyword) {
-        try {
-            List<MenuResponse> list = menuService.export(keyword);
-            ByteArrayInputStream in = excelExportService.exportToExcel(list, "Danh sách thực đơn");
-            byte[] excelData = in.readAllBytes();
-            String filename = "danh_sach_thuc_don.xlsx";
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                    .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-                    .body(excelData);
-        } catch (IOException e) {
-            throw new AppException(ErrorCode.EXPORT_FAILED);
-        }
-    }
-
-    @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('MANAGE_MENUS')")
-    public ApiResponse<MenuResponse> findById(@PathVariable Long id) {
-        return ApiResponse.<MenuResponse>builder()
-                .result(menuService.findById(id))
-                .build();
+        return ExcelDownload.of(menuService.exportExcel(keyword), "danh_sach_thuc_don.xlsx");
     }
 }

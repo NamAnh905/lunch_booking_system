@@ -17,8 +17,8 @@ public interface OrderSummaryRepository extends JpaRepository<Order, Long> {
 
   @Query("""
           SELECT u.id AS userId, u.fullName AS fullName, d.name AS departmentName,
-                 SUM(CASE WHEN COALESCE(o.price, :normalPrice) <= :normalPrice THEN 1 ELSE 0 END) AS normalMealCount,
-                 SUM(CASE WHEN COALESCE(o.price, :normalPrice) > :normalPrice THEN 1 ELSE 0 END) AS specialMealCount,
+                 SUM(CASE WHEN o.mealType = MealType.SPECIAL THEN 0 ELSE 1 END) AS normalMealCount,
+                 SUM(CASE WHEN o.mealType = MealType.SPECIAL THEN 1 ELSE 0 END) AS specialMealCount,
                  SUM(COALESCE(o.price, :normalPrice)) AS totalAmount
           FROM Order o
           JOIN o.user u
@@ -38,8 +38,8 @@ public interface OrderSummaryRepository extends JpaRepository<Order, Long> {
    */
   @Query("""
           SELECT u.id AS userId, u.fullName AS fullName, d.name AS departmentName,
-                 SUM(CASE WHEN COALESCE(o.price, :normalPrice) <= :normalPrice THEN 1 ELSE 0 END) AS normalMealCount,
-                 SUM(CASE WHEN COALESCE(o.price, :normalPrice) > :normalPrice THEN 1 ELSE 0 END) AS specialMealCount,
+                 SUM(CASE WHEN o.mealType = MealType.SPECIAL THEN 0 ELSE 1 END) AS normalMealCount,
+                 SUM(CASE WHEN o.mealType = MealType.SPECIAL THEN 1 ELSE 0 END) AS specialMealCount,
                  SUM(COALESCE(o.price, :normalPrice)) AS totalAmount
           FROM Order o
           JOIN o.user u
@@ -60,7 +60,7 @@ public interface OrderSummaryRepository extends JpaRepository<Order, Long> {
    * Lấy chi tiết lịch sử đặt cơm của từng user trong tháng để dựng ma trận.
    */
   @Query("""
-          SELECT u.id AS userId, o.orderDate AS orderDate, COALESCE(o.price, :normalPrice) AS price
+          SELECT u.id AS userId, o.orderDate AS orderDate, o.mealType AS mealType
           FROM Order o
           JOIN o.user u
           LEFT JOIN u.department d
@@ -71,8 +71,7 @@ public interface OrderSummaryRepository extends JpaRepository<Order, Long> {
       """)
   List<MonthlyOrderDetail> findMonthlyOrderDetails(@Param("month") int month,
       @Param("year") int year,
-      @Param("departmentId") Long departmentId,
-      @Param("normalPrice") BigDecimal normalPrice);
+      @Param("departmentId") Long departmentId);
 
   /**
    * Đếm số suất ăn theo từng ngày trong tháng (GROUP BY tại DB thay vì gom trong bộ nhớ).

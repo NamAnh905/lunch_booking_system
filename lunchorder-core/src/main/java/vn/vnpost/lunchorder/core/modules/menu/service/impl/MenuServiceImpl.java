@@ -3,7 +3,6 @@ package vn.vnpost.lunchorder.core.modules.menu.service.impl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.cache.annotation.CacheEvict;
@@ -27,7 +26,10 @@ import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuImageCreateRequest
 import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuResponse;
 import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuUpdateRequest;
 import vn.vnpost.lunchorder.core.modules.menu.service.mapstruct.MenuMapper;
+import vn.vnpost.lunchorder.tools.excel.ExcelExportService;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -47,6 +49,7 @@ public class MenuServiceImpl implements MenuService {
     private final MenuMapper menuMapper;
     private final DishRepository dishRepository;
     private final PriceRepository priceRepository;
+    private final ExcelExportService excelExportService;
 
     @Override
     @Transactional
@@ -61,18 +64,7 @@ public class MenuServiceImpl implements MenuService {
 
         Menu menu = menuMapper.toEntity(request);
         menu.setPrice(price);
-
-        if (request.getDishIds() != null && !request.getDishIds().isEmpty()) {
-            List<Dish> fetchedDishes = dishRepository.findAllById(request.getDishIds());
-            Map<Long, Dish> dishMap = fetchedDishes.stream().collect(Collectors.toMap(Dish::getId, d -> d));
-            List<Dish> orderedDishes = request.getDishIds().stream()
-                    .map(dishMap::get)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
-            menu.setDishes(orderedDishes);
-        } else {
-            menu.setDishes(new ArrayList<>());
-        }
+        menu.setDishes(resolveOrderedDishes(request.getDishIds()));
 
         menu = menuRepository.save(menu);
         return menuMapper.toDto(menu);
@@ -141,18 +133,7 @@ public class MenuServiceImpl implements MenuService {
 
         menuMapper.update(request, menu);
         menu.setPrice(price);
-
-        if (request.getDishIds() != null && !request.getDishIds().isEmpty()) {
-            List<Dish> fetchedDishes = dishRepository.findAllById(request.getDishIds());
-            Map<Long, Dish> dishMap = fetchedDishes.stream().collect(Collectors.toMap(Dish::getId, d -> d));
-            List<Dish> orderedDishes = request.getDishIds().stream()
-                    .map(dishMap::get)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
-            menu.setDishes(orderedDishes);
-        } else {
-            menu.setDishes(new ArrayList<>());
-        }
+        menu.setDishes(resolveOrderedDishes(request.getDishIds()));
 
         menu = menuRepository.save(menu);
         return menuMapper.toDto(menu);
@@ -170,36 +151,11 @@ public class MenuServiceImpl implements MenuService {
     @Override
     @Cacheable(value = "menus", key = "'list:' + #page + '-' + #size + '-' + #keyword")
     public PageResponse<MenuResponse> findAll(int page, int size, String keyword) {
-        int pageNumber = Math.max(0, page - 1);
-        Pageable pageable = PageRequest.of(pageNumber, PaginationConstants.clampSize(size), Sort.by(Sort.Direction.ASC, "id"));
+        Pageable pageable = PaginationConstants.toPageable(page, size, Sort.by(Sort.Direction.ASC, "id"));
 
         Page<Menu> menuPage = menuRepository.searchMenus(keyword, pageable);
-        List<MenuResponse> dtoList = menuMapper.toDtoList(menuPage.getContent());
 
-        return PageResponse.<MenuResponse>builder()
-                .currentPage(page)
-                .totalPages(menuPage.getTotalPages())
-                .pageSize(size)
-                .totalElements(menuPage.getTotalElements())
-                .data(dtoList)
-                .build();
-    }
-
-    @Override
-    public MenuResponse findById(Long id) {
-        Menu menu = menuRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.MENU_NOT_FOUND));
-        return menuMapper.toDto(menu);
-    }
-
-    @Override
-    @Cacheable(value = "menus", key = "'byDate:' + #date")
-    public List<MenuResponse> findByDate(LocalDate date) {
-        List<Menu> menus = menuRepository.findByMenuDate(date);
-        if (menus.isEmpty()) {
-            throw new AppException(ErrorCode.MENU_NOT_FOUND);
-        }
-        return menuMapper.toDtoList(menus);
+        return PageResponse.of(menuPage, menuMapper.toDtoList(menuPage.getContent()), page, size);
     }
 
     @Override
@@ -209,8 +165,30 @@ public class MenuServiceImpl implements MenuService {
         return menuMapper.toDtoList(menus);
     }
 
+    private List<Dish> resolveOrderedDishes(List<Long> dishIds) {
+        if (dishIds == null || dishIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        Map<Long, Dish> dishMap = dishRepository.findAllById(dishIds).stream()
+                .collect(Collectors.toMap(Dish::getId, dish -> dish));
+
+        return dishIds.stream()
+                .map(dishMap::get)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
     @Override
-    public List<MenuResponse> export(String keyword) {
+    public byte[] exportExcel(String keyword) {
+        try (ByteArrayInputStream in = excelExportService.exportToExcel(export(keyword), "Danh sách thực đơn")) {
+            return in.readAllBytes();
+        } catch (IOException e) {
+            throw new AppException(ErrorCode.EXPORT_FAILED);
+        }
+    }
+
+    private List<MenuResponse> export(String keyword) {
         Sort sort = Sort.by(Sort.Direction.ASC, "id");
         List<Menu> menus = menuRepository.searchMenusList(keyword, sort);
         return menuMapper.toDtoList(menus);

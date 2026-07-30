@@ -86,14 +86,6 @@ public class DepartmentServiceImpl implements DepartmentService {
     }
 
     @Override
-    @Cacheable(value = "departments", key = "'search:' + #keyword")
-    public List<DepartmentResponse> search(String keyword) {
-        List<Department> departments = departmentRepository.findByCodeContainingIgnoreCaseOrNameContainingIgnoreCase(keyword, keyword);
-        populateUserCounts(departments);
-        return departmentMapper.toDtoList(departments);
-    }
-
-    @Override
     @Cacheable(value = "departments", key = "'all'")
     public List<DepartmentResponse> getAll() {
         Pageable pageable = PageRequest.of(0, PaginationConstants.MAX_LOOKUP_SIZE, Sort.by(Sort.Direction.DESC, "id"));
@@ -105,8 +97,7 @@ public class DepartmentServiceImpl implements DepartmentService {
     @Override
     @Cacheable(value = "departments", key = "'findAll:' + #keyword + ':' + #page + ':' + #size")
     public PageResponse<DepartmentResponse> findAll(String keyword, int page, int size) {
-        int pageNumber = Math.max(0, page - 1);
-        Pageable pageable = PageRequest.of(pageNumber, PaginationConstants.clampSize(size), Sort.by(Sort.Direction.DESC, "id"));
+        Pageable pageable = PaginationConstants.toPageable(page, size, Sort.by(Sort.Direction.DESC, "id"));
 
         Page<Department> departmentPage;
         if (keyword != null && !keyword.trim().isEmpty()) {
@@ -116,15 +107,8 @@ public class DepartmentServiceImpl implements DepartmentService {
         }
 
         populateUserCounts(departmentPage.getContent());
-        List<DepartmentResponse> dtoList = departmentMapper.toDtoList(departmentPage.getContent());
 
-        return PageResponse.<DepartmentResponse>builder()
-                .currentPage(page)
-                .totalPages(departmentPage.getTotalPages())
-                .pageSize(size)
-                .totalElements(departmentPage.getTotalElements())
-                .data(dtoList)
-                .build();
+        return PageResponse.of(departmentPage, departmentMapper.toDtoList(departmentPage.getContent()), page, size);
     }
 }
 

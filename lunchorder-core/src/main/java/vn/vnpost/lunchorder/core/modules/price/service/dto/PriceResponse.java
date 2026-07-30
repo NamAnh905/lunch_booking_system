@@ -3,6 +3,7 @@ package vn.vnpost.lunchorder.core.modules.price.service.dto;
 import lombok.Getter;
 import lombok.Setter;
 import vn.vnpost.lunchorder.common.base.BaseResponse;
+import vn.vnpost.lunchorder.common.enums.MealType;
 
 import java.math.BigDecimal;
 
@@ -11,6 +12,7 @@ import java.math.BigDecimal;
 public class PriceResponse extends BaseResponse {
     private String name;
     private BigDecimal amount;
+    private MealType mealType;
     private String description;
     private Boolean isActive;
 }

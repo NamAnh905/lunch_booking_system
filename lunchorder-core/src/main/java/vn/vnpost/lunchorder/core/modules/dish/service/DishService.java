@@ -17,7 +17,6 @@ public interface DishService {
 
     List<DishResponse> getAll();
 
-    List<DishResponse> search(String name);
 
-    List<DishResponse> export(String keyword);
+    byte[] exportExcel(String keyword);
 }

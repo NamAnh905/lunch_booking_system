@@ -2,7 +2,10 @@ package vn.vnpost.lunchorder.system.modules.role.service.impl;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Sort;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -10,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
+import vn.vnpost.lunchorder.common.audit.AuditEvent;
 import vn.vnpost.lunchorder.system.modules.permission.entity.Permission;
 import vn.vnpost.lunchorder.system.modules.role.entity.Role;
 import vn.vnpost.lunchorder.common.exception.AppException;
@@ -31,6 +35,16 @@ public class RoleServiceImpl implements RoleService {
     private final RoleRepository roleRepository;
     private final RoleMapper roleMapper;
     private final PermissionRepository permissionRepository;
+    private final ApplicationEventPublisher eventPublisher;
+
+    private Set<String> permissionActionsOf(Role role) {
+        if (role.getPermissions() == null) {
+            return new TreeSet<>();
+        }
+        return role.getPermissions().stream()
+                .map(Permission::getAction)
+                .collect(Collectors.toCollection(TreeSet::new));
+    }
 
     @Override
     @Transactional
@@ -47,7 +61,9 @@ public class RoleServiceImpl implements RoleService {
         }
 
         Role savedRole = roleRepository.save(role);
-        return roleMapper.toDto(savedRole);
+        RoleResponse created = roleMapper.toDto(savedRole);
+        eventPublisher.publishEvent(new AuditEvent("CREATE_ROLE", "Role", savedRole.getId(), null, created));
+        return created;
     }
 
     @Override
@@ -56,18 +72,19 @@ public class RoleServiceImpl implements RoleService {
     public RoleResponse update(Long id, RoleUpdateRequest request) {
         Role role = roleRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
+        RoleResponse before = roleMapper.toDto(role);
 
         roleMapper.update(request, role);
 
         if (request.getPermissions() != null) {
             List<Permission> permissions = permissionRepository.findAllByActionIn(request.getPermissions());
             role.setPermissions(new HashSet<>(permissions));
-        } else {
-            role.setPermissions(null);
         }
 
         Role savedRole = roleRepository.save(role);
-        return roleMapper.toDto(savedRole);
+        RoleResponse after = roleMapper.toDto(savedRole);
+        eventPublisher.publishEvent(new AuditEvent("UPDATE_ROLE", "Role", id, before, after));
+        return after;
     }
 
     @Override
@@ -76,7 +93,10 @@ public class RoleServiceImpl implements RoleService {
     public void delete(Long id) {
         Role role = roleRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
+        RoleResponse before = roleMapper.toDto(role);
+
         roleRepository.delete(role);
+        eventPublisher.publishEvent(new AuditEvent("DELETE_ROLE", "Role", id, before, null));
     }
 
     @Override
@@ -106,6 +126,7 @@ public class RoleServiceImpl implements RoleService {
     public void assignPermissions(Long roleId, Set<String> permissionCodes) {
         Role role = roleRepository.findById(roleId)
                 .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
+        Set<String> before = permissionActionsOf(role);
 
         if (permissionCodes == null || permissionCodes.isEmpty()) {
             role.setPermissions(new HashSet<>());
@@ -116,6 +137,8 @@ public class RoleServiceImpl implements RoleService {
             }
             role.setPermissions(new HashSet<>(permissions));
         }
-        roleRepository.save(role);
+        Role savedRole = roleRepository.save(role);
+        eventPublisher.publishEvent(new AuditEvent(
+                "ASSIGN_ROLE_PERMISSIONS", "Role", roleId, before, permissionActionsOf(savedRole)));
     }
 }

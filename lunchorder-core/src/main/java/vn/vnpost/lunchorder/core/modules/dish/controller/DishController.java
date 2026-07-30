@@ -11,20 +11,14 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import vn.vnpost.lunchorder.common.base.ApiResponse;
+import vn.vnpost.lunchorder.common.base.ExcelDownload;
 import vn.vnpost.lunchorder.common.base.PageResponse;
-import vn.vnpost.lunchorder.common.exception.AppException;
-import vn.vnpost.lunchorder.common.exception.ErrorCode;
 import vn.vnpost.lunchorder.core.modules.dish.service.DishService;
 import vn.vnpost.lunchorder.core.modules.dish.service.dto.DishCreateRequest;
 import vn.vnpost.lunchorder.core.modules.dish.service.dto.DishResponse;
 import vn.vnpost.lunchorder.core.modules.dish.service.dto.DishUpdateRequest;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import vn.vnpost.lunchorder.tools.excel.ExcelExportService;
 
 @RestController
 @RequiredArgsConstructor
@@ -32,7 +26,6 @@ import vn.vnpost.lunchorder.tools.excel.ExcelExportService;
 @RequestMapping("/admin/dishes")
 public class DishController {
     private final DishService dishService;
-    private final ExcelExportService excelExportService;
 
     @PostMapping
     @PreAuthorize("hasAuthority('MANAGE_DISHES')")
@@ -83,25 +76,6 @@ public class DishController {
     @PreAuthorize("hasAuthority('VIEW_DISHES')")
     public ResponseEntity<byte[]> export(
             @RequestParam(value = "keyword", required = false) String keyword) {
-        try {
-            List<DishResponse> list = dishService.export(keyword);
-            ByteArrayInputStream in = excelExportService.exportToExcel(list, "Danh sách món ăn");
-            byte[] excelData = in.readAllBytes();
-            String filename = "danh_sach_mon_an.xlsx";
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                    .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-                    .body(excelData);
-        } catch (IOException e) {
-            throw new AppException(ErrorCode.EXPORT_FAILED);
-        }
-    }
-
-    @GetMapping("/search")
-    @PreAuthorize("hasAuthority('VIEW_DISHES')")
-    public ApiResponse<List<DishResponse>> search(@RequestParam String name) {
-        return ApiResponse.<List<DishResponse>>builder()
-                .result(dishService.search(name))
-                .build();
+        return ExcelDownload.of(dishService.exportExcel(keyword), "danh_sach_mon_an.xlsx");
     }
 }

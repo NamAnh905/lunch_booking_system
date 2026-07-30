@@ -1,6 +1,7 @@
 package vn.vnpost.lunchorder.core.modules.ordersummary.repository.projection;
 
-import java.math.BigDecimal;
+import vn.vnpost.lunchorder.common.enums.MealType;
+
 import java.time.LocalDate;
 
 /**
@@ -13,5 +14,5 @@ public interface MonthlyOrderDetail {
 
     LocalDate getOrderDate();
 
-    BigDecimal getPrice();
+    MealType getMealType();
 }

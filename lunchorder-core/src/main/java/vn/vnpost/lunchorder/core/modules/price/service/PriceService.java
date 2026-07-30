@@ -11,7 +11,6 @@ public interface PriceService {
     PriceResponse create(PriceCreateRequest request);
     PriceResponse update(Long id, PriceUpdateRequest request);
     void delete(Long id);
-    PriceResponse findById(Long id);
     PageResponse<PriceResponse> findAll(int page, int size, String keyword);
     List<PriceResponse> getActivePrices();
 }
