@@ -23,6 +23,12 @@ public class UserLookupServiceImpl implements UserLookupService {
     }
 
     @Override
+    public User getByIdForUpdate(Long id) {
+        return userRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    @Override
     public Page<User> findAll(Pageable pageable) {
         return userRepository.findAll(pageable);
     }

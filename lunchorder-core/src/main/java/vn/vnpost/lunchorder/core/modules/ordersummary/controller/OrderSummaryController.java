@@ -51,12 +51,12 @@ public class OrderSummaryController {
 
     @GetMapping("/monthly/export")
     @PreAuthorize("hasAuthority('EXPORT_REPORTS')")
-    public ResponseEntity<byte[]> exportMonthlyMatrixExcel(
+    public ResponseEntity<byte[]> exportMonthlyExcel(
             @RequestParam("month") @Min(1) @Max(12) int month,
             @RequestParam("year") @Min(2000) @Max(2100) int year,
             @RequestParam(value = "departmentId", required = false) Long departmentId) {
-        byte[] excelData = orderSummaryService.exportMonthlyMatrixExcel(month, year, departmentId);
-        String filename = "theo_doi_dat_com_thang_" + month + "_" + year + ".xlsx";
+        byte[] excelData = orderSummaryService.exportMonthlyExcel(month, year, departmentId);
+        String filename = "tong_hop_suat_an_thang_" + month + "_" + year + ".xlsx";
 
         return ExcelDownload.of(excelData, filename);
     }

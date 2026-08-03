@@ -13,5 +13,5 @@ public interface OrderSummaryService {
 
     byte[] exportDailyExcel(LocalDate date, Long departmentId);
 
-    byte[] exportMonthlyMatrixExcel(int month, int year, Long departmentId);
+    byte[] exportMonthlyExcel(int month, int year, Long departmentId);
 }

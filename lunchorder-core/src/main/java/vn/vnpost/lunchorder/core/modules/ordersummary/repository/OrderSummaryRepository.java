@@ -6,7 +6,6 @@ import org.springframework.data.repository.query.Param;
 import vn.vnpost.lunchorder.core.modules.order.entity.Order;
 import vn.vnpost.lunchorder.common.enums.OrderStatus;
 import vn.vnpost.lunchorder.core.modules.ordersummary.repository.projection.DailyMealCount;
-import vn.vnpost.lunchorder.core.modules.ordersummary.repository.projection.MonthlyOrderDetail;
 import vn.vnpost.lunchorder.core.modules.ordersummary.repository.projection.OrderSummaryRow;
 
 import java.math.BigDecimal;
@@ -55,23 +54,6 @@ public interface OrderSummaryRepository extends JpaRepository<Order, Long> {
       @Param("year") int year,
       @Param("departmentId") Long departmentId,
       @Param("normalPrice") BigDecimal normalPrice);
-
-  /**
-   * Lấy chi tiết lịch sử đặt cơm của từng user trong tháng để dựng ma trận.
-   */
-  @Query("""
-          SELECT u.id AS userId, o.orderDate AS orderDate, o.mealType AS mealType
-          FROM Order o
-          JOIN o.user u
-          LEFT JOIN u.department d
-          WHERE EXTRACT(MONTH FROM o.orderDate) = :month
-            AND EXTRACT(YEAR FROM o.orderDate) = :year
-            AND o.status != OrderStatus.CANCELLED
-            AND (:departmentId IS NULL OR d.id = :departmentId)
-      """)
-  List<MonthlyOrderDetail> findMonthlyOrderDetails(@Param("month") int month,
-      @Param("year") int year,
-      @Param("departmentId") Long departmentId);
 
   /**
    * Đếm số suất ăn theo từng ngày trong tháng (GROUP BY tại DB thay vì gom trong bộ nhớ).

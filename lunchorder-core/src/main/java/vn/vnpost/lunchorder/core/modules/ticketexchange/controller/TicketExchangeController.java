@@ -10,6 +10,7 @@ import vn.vnpost.lunchorder.common.base.ApiResponse;
 import vn.vnpost.lunchorder.common.base.PageResponse;
 import vn.vnpost.lunchorder.common.exception.RateLimitExceededException;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.ratelimit.TicketClaimRateLimiter;
+import vn.vnpost.lunchorder.core.modules.ticketexchange.ratelimit.TicketListingRateLimiter;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.service.TicketExchangeService;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.service.dto.TicketExchangeCreateRequest;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.service.dto.TicketExchangeResponse;
@@ -25,6 +26,7 @@ public class TicketExchangeController {
 
         private final TicketExchangeService ticketExchangeService;
         private final TicketClaimRateLimiter ticketClaimRateLimiter;
+        private final TicketListingRateLimiter ticketListingRateLimiter;
 
         @GetMapping
         @PreAuthorize("hasAuthority('CREATE_TICKET')")
@@ -44,6 +46,9 @@ public class TicketExchangeController {
         public ApiResponse<TicketExchangeResponse> postTicket(
                         @CurrentUserId Long userId,
                         @RequestBody @Valid TicketExchangeCreateRequest request) {
+                if (!ticketListingRateLimiter.tryAcquire(userId)) {
+                        throw new RateLimitExceededException(ticketListingRateLimiter.resolveRetryAfterSeconds(userId));
+                }
                 TicketExchangeResponse response = ticketExchangeService.postTicketToMarket(userId,
                                 request);
                 return ApiResponse.<TicketExchangeResponse>builder()
@@ -56,6 +61,9 @@ public class TicketExchangeController {
         public ApiResponse<String> withdrawTicket(
                         @CurrentUserId Long userId,
                         @PathVariable Long exchangeId) {
+                if (!ticketListingRateLimiter.tryAcquire(userId)) {
+                        throw new RateLimitExceededException(ticketListingRateLimiter.resolveRetryAfterSeconds(userId));
+                }
                 ticketExchangeService.withdrawTicketFromMarket(userId, exchangeId);
                 return ApiResponse.<String>builder()
                                 .result("Withdraw market ticket success")

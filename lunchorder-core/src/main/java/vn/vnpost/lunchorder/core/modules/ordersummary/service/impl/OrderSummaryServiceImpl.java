@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.vnpost.lunchorder.core.modules.ordersummary.repository.OrderSummaryRepository;
-import vn.vnpost.lunchorder.core.modules.ordersummary.repository.projection.MonthlyOrderDetail;
 import vn.vnpost.lunchorder.core.modules.ordersummary.repository.projection.OrderSummaryRow;
 import vn.vnpost.lunchorder.core.modules.ordersummary.service.OrderSummaryService;
 import vn.vnpost.lunchorder.core.modules.ordersummary.service.dto.DailyMealCountResponse;
@@ -102,15 +101,7 @@ public class OrderSummaryServiceImpl implements OrderSummaryService {
     }
 
     @Override
-    public byte[] exportMonthlyMatrixExcel(int month, int year, Long departmentId) {
-        MonthlyOrderSummaryResponse summary = getMonthlySummary(month, year, departmentId);
-
-        BigDecimal normalPrice = mealPricePolicy.getNormalPrice();
-        BigDecimal specialPrice = mealPricePolicy.getSpecialPrice();
-
-        List<MonthlyOrderDetail> detailRecords = orderSummaryRepository.findMonthlyOrderDetails(month, year,
-                departmentId);
-
-        return excelHelper.exportMonthlyMatrixExcel(month, year, summary, detailRecords, normalPrice, specialPrice);
+    public byte[] exportMonthlyExcel(int month, int year, Long departmentId) {
+        return excelHelper.exportMonthlyExcel(month, year, getMonthlySummary(month, year, departmentId));
     }
 }

@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import vn.vnpost.lunchorder.core.modules.ordersummary.service.OrderReportMailService;
+import vn.vnpost.lunchorder.core.policy.CutOffPolicy;
 
 import java.time.LocalDate;
 
@@ -14,17 +15,18 @@ import java.time.LocalDate;
 public class DailyReportEmailScheduler {
 
     private final OrderReportMailService orderReportMailService;
+    private final CutOffPolicy cutOffPolicy;
 
-    @Scheduled(cron = "0 0 14 * * ?")
+    @Scheduled(cron = "0 0 14 * * MON-FRI", zone = "Asia/Ho_Chi_Minh")
     public void sendDailyReport() {
-        LocalDate today = LocalDate.now();
-        log.info("Daily report scheduler: generating report for {}", today);
+        LocalDate today = cutOffPolicy.today();
 
-        try {
-            orderReportMailService.sendDailyReportEmail(today);
-            log.info("Daily report scheduler: email sent successfully for {}", today);
-        } catch (Exception e) {
-            log.error("Daily report scheduler: failed for {}", today, e);
+        if (cutOffPolicy.getHolidayDates().contains(today)) {
+            log.info("Daily report scheduler: bỏ qua ngày lễ {}", today);
+            return;
         }
+
+        log.info("Daily report scheduler: đã giao task gửi báo cáo ngày {}", today);
+        orderReportMailService.sendDailyReportEmail(today);
     }
 }

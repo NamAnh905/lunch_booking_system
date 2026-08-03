@@ -12,6 +12,8 @@ import vn.vnpost.lunchorder.common.enums.OrderStatus;
 import vn.vnpost.lunchorder.common.enums.TicketExchangeStatus;
 import vn.vnpost.lunchorder.core.modules.order.repository.OrderRepository;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.event.TicketExchangeExpiredEvent;
+import vn.vnpost.lunchorder.core.modules.ticketexchange.event.TicketMarketChangeReason;
+import vn.vnpost.lunchorder.core.modules.ticketexchange.event.TicketMarketChangedEvent;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.repository.TicketExchangeRepository;
 import vn.vnpost.lunchorder.core.policy.CutOffPolicy;
 
@@ -71,6 +73,8 @@ public class TicketExchangeAutoRevertScheduler {
                     owner.getId(),
                     ticketExchange.getOrder().getOrderDate()));
         }
+
+        eventPublisher.publishEvent(new TicketMarketChangedEvent(TicketMarketChangeReason.EXPIRED));
     }
 
     private void confirmPendingOrders(LocalDate today, LocalTime lockTime) {

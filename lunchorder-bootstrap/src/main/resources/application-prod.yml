@@ -67,6 +67,9 @@ security:
   ticket-claim-rate-limit:
     max-requests: ${TICKET_CLAIM_RATE_LIMIT_MAX_REQUESTS:3}
     window-seconds: ${TICKET_CLAIM_RATE_LIMIT_WINDOW_SECONDS:5}
+  ticket-listing-rate-limit:
+    max-requests: ${TICKET_LISTING_RATE_LIMIT_MAX_REQUESTS:5}
+    window-seconds: ${TICKET_LISTING_RATE_LIMIT_WINDOW_SECONDS:10}
 
 springdoc:
   api-docs:

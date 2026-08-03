@@ -22,6 +22,8 @@ import vn.vnpost.lunchorder.core.modules.ticketexchange.service.TicketExchangeSe
 import vn.vnpost.lunchorder.core.modules.ticketexchange.service.dto.TicketExchangeCreateRequest;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.service.dto.TicketExchangeResponse;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.event.TicketExchangeClaimedEvent;
+import vn.vnpost.lunchorder.core.modules.ticketexchange.event.TicketMarketChangeReason;
+import vn.vnpost.lunchorder.core.modules.ticketexchange.event.TicketMarketChangedEvent;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.service.mapstruct.TicketExchangeMapper;
 import vn.vnpost.lunchorder.system.modules.user.service.UserLookupService;
 
@@ -107,6 +109,9 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
         } catch (DataIntegrityViolationException e) {
             throw new AppException(ErrorCode.ORDER_IN_MARKET);
         }
+
+        eventPublisher.publishEvent(new TicketMarketChangedEvent(TicketMarketChangeReason.POSTED));
+
         return ticketExchangeMapper.toDto(ticketExchange);
     }
 
@@ -131,11 +136,15 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
 
         ticketExchange.setStatus(TicketExchangeStatus.CANCELLED);
         ticketExchangeRepository.save(ticketExchange);
+
+        eventPublisher.publishEvent(new TicketMarketChangedEvent(TicketMarketChangeReason.WITHDRAWN));
     }
 
     @Override
     @Transactional
     public TicketExchangeResponse claimTicket(Long userId, Long exchangeId) {
+        User buyer = userLookupService.getByIdForUpdate(userId);
+
         TicketExchange ticketExchange = ticketExchangeRepository.findByIdForUpdate(exchangeId)
                 .orElseThrow(() -> new AppException(ErrorCode.EXCHANGE_NOT_FOUND));
 
@@ -143,7 +152,6 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
 
         Order order = ticketExchange.getOrder();
         User seller = order.getUser();
-        User buyer = userLookupService.getById(userId);
 
         ticketExchange.setStatus(TicketExchangeStatus.MATCHED);
         ticketExchange.setBuyer(buyer);
@@ -159,6 +167,8 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
                 buyer.getId(),
                 buyer.getFullName(),
                 order.getOrderDate()));
+
+        eventPublisher.publishEvent(new TicketMarketChangedEvent(TicketMarketChangeReason.CLAIMED));
 
         return ticketExchangeMapper.toDto(ticketExchange);
     }

@@ -64,3 +64,6 @@ security:
   ticket-claim-rate-limit:
     max-requests: 3
     window-seconds: 5
+  ticket-listing-rate-limit:
+    max-requests: 5
+    window-seconds: 10

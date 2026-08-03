@@ -27,12 +27,6 @@ public class OrderReportMailServiceImpl implements OrderReportMailService {
     private final EmailService emailService;
     private final SystemConfigRepository systemConfigRepository;
 
-    /**
-     * Chạy bất đồng bộ: controller trả 202 Accepted ngay, việc kết xuất Excel và gửi mail diễn ra
-     * ở luồng nền. Do lỗi không còn được trả về client đồng bộ (kể cả
-     * {@link ErrorCode#ADMIN_REPORT_EMAIL_NOT_CONFIGURED}), mọi ngoại lệ được bắt và log rõ ràng
-     * tại đây thay vì ném ra ngoài.
-     */
     @Override
     @Async
     public void sendDailyReportEmail(LocalDate date) {
@@ -54,15 +48,12 @@ public class OrderReportMailServiceImpl implements OrderReportMailService {
         }
     }
 
-    /**
-     * Chạy bất đồng bộ. Xem ghi chú xử lý lỗi ở {@link #sendDailyReportEmail(LocalDate)}.
-     */
     @Override
     @Async
     public void sendMonthlyReportEmail(int month, int year) {
         try {
-            byte[] excelData = orderSummaryService.exportMonthlyMatrixExcel(month, year, null);
-            String filename = "theo_doi_dat_com_thang_" + month + "_" + year + ".xlsx";
+            byte[] excelData = orderSummaryService.exportMonthlyExcel(month, year, null);
+            String filename = "tong_hop_suat_an_thang_" + month + "_" + year + ".xlsx";
             String subject = "Báo cáo tổng hợp đặt cơm tháng " + month + "/" + year;
             String body = String.format("""
                     <h3>Báo cáo tổng hợp đặt cơm tháng %d/%d</h3>

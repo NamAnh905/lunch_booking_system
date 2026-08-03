@@ -47,11 +47,23 @@ public class SseEmitterRegistry {
         }
 
         for (SseEmitter emitter : emitters) {
-            try {
-                emitter.send(SseEmitter.event().name(eventName).data(payload, MediaType.APPLICATION_JSON));
-            } catch (IOException | IllegalStateException e) {
-                remove(userId, emitter);
+            dispatch(userId, emitter, eventName, payload);
+        }
+    }
+
+    public void broadcast(String eventName, Object payload) {
+        emittersByUser.forEach((userId, emitters) -> {
+            for (SseEmitter emitter : emitters) {
+                dispatch(userId, emitter, eventName, payload);
             }
+        });
+    }
+
+    private void dispatch(Long userId, SseEmitter emitter, String eventName, Object payload) {
+        try {
+            emitter.send(SseEmitter.event().name(eventName).data(payload, MediaType.APPLICATION_JSON));
+        } catch (IOException | IllegalStateException e) {
+            remove(userId, emitter);
         }
     }
 
