@@ -19,5 +19,5 @@ public interface DepartmentService {
 
     List<DepartmentResponse> getAll();
 
-    PageResponse<DepartmentResponse> findAll(String keyword, int page, int size);
+    PageResponse<DepartmentResponse> findAll(String keyword, int page, int size, String sortBy, String sortDir);
 }

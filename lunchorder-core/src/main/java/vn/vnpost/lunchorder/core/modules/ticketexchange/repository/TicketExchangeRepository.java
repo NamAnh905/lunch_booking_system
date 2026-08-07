@@ -19,6 +19,21 @@ import java.util.List;
 import java.util.Optional;
 
 public interface TicketExchangeRepository extends JpaRepository<TicketExchange, Long> {
+
+    String ADMIN_FILTER_QUERY = "SELECT t FROM TicketExchange t " +
+            "LEFT JOIN t.order o " +
+            "LEFT JOIN o.originalUser ou " +
+            "LEFT JOIN t.buyer b " +
+            "WHERE (cast(:startDate as date) IS NULL OR o.orderDate >= :startDate) AND " +
+            "(cast(:endDate as date) IS NULL OR o.orderDate <= :endDate) AND " +
+            "(:status IS NULL OR t.status = :status) AND " +
+            "(cast(:keyword as text) IS NULL OR cast(:keyword as text) = '' OR " +
+            "LOWER(ou.fullName) LIKE LOWER(CONCAT('%', CAST(:keyword AS text), '%')) OR " +
+            "LOWER(ou.username) LIKE LOWER(CONCAT('%', CAST(:keyword AS text), '%')) OR " +
+            "LOWER(b.fullName) LIKE LOWER(CONCAT('%', CAST(:keyword AS text), '%')) OR " +
+            "LOWER(b.username) LIKE LOWER(CONCAT('%', CAST(:keyword AS text), '%'))) " +
+            "ORDER BY t.createdAt ASC, t.id ASC";
+
     Page<TicketExchange> findByStatus(TicketExchangeStatus status, Pageable pageable);
 
     Optional<TicketExchange> findByOrderIdAndStatus(Long orderId, TicketExchangeStatus status);
@@ -34,24 +49,19 @@ public interface TicketExchangeRepository extends JpaRepository<TicketExchange, 
     List<TicketExchange> findBySellerIdAndStatus(@Param("userId") Long userId, @Param("status") TicketExchangeStatus status);
 
     @EntityGraph(attributePaths = {"order", "order.originalUser", "order.menu", "buyer"})
-    @Query("SELECT t FROM TicketExchange t " +
-           "LEFT JOIN t.order o " +
-           "LEFT JOIN o.originalUser ou " +
-           "LEFT JOIN t.buyer b " +
-           "WHERE (cast(:startDate as date) IS NULL OR o.orderDate >= :startDate) AND " +
-           "(cast(:endDate as date) IS NULL OR o.orderDate <= :endDate) AND " +
-           "(:status IS NULL OR t.status = :status) AND " +
-           "(cast(:keyword as text) IS NULL OR cast(:keyword as text) = '' OR " +
-           "LOWER(ou.fullName) LIKE LOWER(CONCAT('%', CAST(:keyword AS text), '%')) OR " +
-           "LOWER(ou.username) LIKE LOWER(CONCAT('%', CAST(:keyword AS text), '%')) OR " +
-           "LOWER(b.fullName) LIKE LOWER(CONCAT('%', CAST(:keyword AS text), '%')) OR " +
-           "LOWER(b.username) LIKE LOWER(CONCAT('%', CAST(:keyword AS text), '%'))) " +
-           "ORDER BY t.createdAt ASC, t.id ASC")
+    @Query(ADMIN_FILTER_QUERY)
     Page<TicketExchange> findForAdmin(@Param("startDate") LocalDate startDate,
                                       @Param("endDate") LocalDate endDate,
                                       @Param("status") TicketExchangeStatus status,
                                       @Param("keyword") String keyword,
                                       Pageable pageable);
+
+    @EntityGraph(attributePaths = {"order", "order.originalUser", "order.menu", "buyer"})
+    @Query(ADMIN_FILTER_QUERY)
+    List<TicketExchange> findForAdminExport(@Param("startDate") LocalDate startDate,
+                                            @Param("endDate") LocalDate endDate,
+                                            @Param("status") TicketExchangeStatus status,
+                                            @Param("keyword") String keyword);
 
     @Query("SELECT COUNT(t) > 0 FROM TicketExchange t " +
            "WHERE t.order.user.id = :userId AND t.status = :status AND t.order.orderDate >= :fromDate")

@@ -11,8 +11,8 @@ spring:
       password: ${SECURITY_USER_PASSWORD}
   servlet:
     multipart:
-      max-file-size: 10MB
-      max-request-size: 10MB
+      max-file-size: 12MB
+      max-request-size: 12MB
 
 server:
   port: 8080

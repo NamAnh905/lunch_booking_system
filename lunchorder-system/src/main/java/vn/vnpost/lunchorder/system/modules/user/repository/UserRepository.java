@@ -1,5 +1,6 @@
 package vn.vnpost.lunchorder.system.modules.user.repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -40,6 +41,9 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
     @Override
     @EntityGraph(attributePaths = "department")
     List<User> findAll(Sort sort);
+
+    @Query("select u.username from User u where u.username in :usernames")
+    List<String> findExistingUsernames(@Param("usernames") Collection<String> usernames);
 
     @EntityGraph(attributePaths = "department")
     List<User> findByFullNameContainingIgnoreCaseOrUsernameContainingIgnoreCase(String fullName, String username);

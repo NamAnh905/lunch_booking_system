@@ -2,6 +2,7 @@ package vn.vnpost.lunchorder.core.modules.menu.service;
 
 import java.time.LocalDate;
 import java.util.List;
+import org.springframework.web.multipart.MultipartFile;
 import vn.vnpost.lunchorder.common.base.PageResponse;
 import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuCreateRequest;
 import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuImageCreateRequest;
@@ -11,9 +12,9 @@ import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuUpdateRequest;
 public interface MenuService {
     MenuResponse create(MenuCreateRequest request);
 
-    MenuResponse createImageMenu(MenuImageCreateRequest request);
+    MenuResponse createImageMenu(MenuImageCreateRequest request, MultipartFile image);
 
-    MenuResponse updateImageMenu(Long id, MenuImageCreateRequest request);
+    MenuResponse updateImageMenu(Long id, MenuImageCreateRequest request, MultipartFile image);
 
     MenuResponse update(Long id, MenuUpdateRequest request);
 

@@ -4,9 +4,11 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import vn.vnpost.lunchorder.common.base.ApiResponse;
 import vn.vnpost.lunchorder.common.base.ExcelDownload;
 import vn.vnpost.lunchorder.common.base.PageResponse;
@@ -37,20 +39,23 @@ public class MenuController {
                 .build();
     }
 
-    @PostMapping("/image")
+    @PostMapping(value = "/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAuthority('MANAGE_MENUS')")
-    public ApiResponse<MenuResponse> createImageMenu(@RequestBody @Valid MenuImageCreateRequest request) {
+    public ApiResponse<MenuResponse> createImageMenu(
+            @RequestPart("request") @Valid MenuImageCreateRequest request,
+            @RequestPart("file") MultipartFile file) {
         return ApiResponse.<MenuResponse>builder()
-                .result(menuService.createImageMenu(request))
+                .result(menuService.createImageMenu(request, file))
                 .build();
     }
 
-    @PutMapping("/image/{id}")
+    @PutMapping(value = "/image/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAuthority('MANAGE_MENUS')")
     public ApiResponse<MenuResponse> updateImageMenu(@PathVariable Long id,
-            @RequestBody @Valid MenuImageCreateRequest request) {
+            @RequestPart("request") @Valid MenuImageCreateRequest request,
+            @RequestPart(value = "file", required = false) MultipartFile file) {
         return ApiResponse.<MenuResponse>builder()
-                .result(menuService.updateImageMenu(id, request))
+                .result(menuService.updateImageMenu(id, request, file))
                 .build();
     }
 

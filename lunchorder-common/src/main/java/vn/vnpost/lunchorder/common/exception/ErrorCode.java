@@ -42,6 +42,7 @@ public enum ErrorCode {
 
     MENU_NOT_FOUND(6001, "Menu not found", HttpStatus.NOT_FOUND),
     MENU_ALREADY_EXISTS(6002, "Menu already exists for this date", HttpStatus.BAD_REQUEST),
+    MENU_IMAGE_WEEK_ALREADY_EXISTS(6003, "An image menu already exists for this week", HttpStatus.BAD_REQUEST),
 
     ORDER_NOT_FOUND(7001, "Order not found", HttpStatus.NOT_FOUND),
     ORDER_CUTOFF_REACHED(7002, "Order or cancellation cutoff time has been reached", HttpStatus.BAD_REQUEST),
@@ -72,11 +73,23 @@ public enum ErrorCode {
 
     ADMIN_REPORT_EMAIL_NOT_CONFIGURED(14001, "Admin report email is not configured in system settings", HttpStatus.INTERNAL_SERVER_ERROR),
     EXPORT_FAILED(14002, "Failed to export data to Excel", HttpStatus.INTERNAL_SERVER_ERROR),
+    IMPORT_FILE_REQUIRED(14003, "Import file is required", HttpStatus.BAD_REQUEST),
+    IMPORT_FILE_TYPE_NOT_ALLOWED(14004, "Only .xlsx files can be imported", HttpStatus.BAD_REQUEST),
+    IMPORT_FILE_UNREADABLE(14005, "The Excel file could not be read", HttpStatus.BAD_REQUEST),
+    IMPORT_FILE_EMPTY(14006, "The Excel file has no data row", HttpStatus.BAD_REQUEST),
+    IMPORT_FILE_TOO_MANY_ROWS(14007, "The Excel file exceeds the maximum number of rows allowed per import",
+            HttpStatus.BAD_REQUEST),
 
     IMAGE_INVALID(15001, "Image file is empty or invalid", HttpStatus.BAD_REQUEST),
     IMAGE_UPLOAD_FAILED(15002, "Failed to upload image", HttpStatus.INTERNAL_SERVER_ERROR),
     IMAGE_TYPE_NOT_ALLOWED(15003, "Image type is not allowed", HttpStatus.BAD_REQUEST),
     IMAGE_TOO_LARGE(15004, "Image file exceeds the maximum allowed size", HttpStatus.BAD_REQUEST),
+
+    GUEST_MEAL_NOT_FOUND(16001, "Guest meal not found", HttpStatus.NOT_FOUND),
+    GUEST_MEAL_QUANTITY_REQUIRED(16002, "A guest meal must have at least one portion", HttpStatus.BAD_REQUEST),
+    GUEST_MEAL_DEPARTMENT_MISMATCH(16003, "The selected user does not belong to the selected department", HttpStatus.BAD_REQUEST),
+    GUEST_MEAL_DATE_IN_PAST(16004, "Guest meals can only be booked for today or a future date", HttpStatus.BAD_REQUEST),
+    GUEST_MEAL_LOCKED(16005, "Guest meals can no longer be edited or deleted after the cut-off time", HttpStatus.BAD_REQUEST),
     ;
 
     private final int code;

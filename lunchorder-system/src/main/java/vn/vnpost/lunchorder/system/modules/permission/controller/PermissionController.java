@@ -6,10 +6,12 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import vn.vnpost.lunchorder.common.base.ApiResponse;
+import vn.vnpost.lunchorder.common.base.ExcelDownload;
 import vn.vnpost.lunchorder.common.base.PageResponse;
 import vn.vnpost.lunchorder.system.modules.permission.service.PermissionService;
 import vn.vnpost.lunchorder.system.modules.permission.service.dto.PermissionCreateRequest;
@@ -73,5 +75,12 @@ public class PermissionController {
         return ApiResponse.<PermissionResponse>builder()
                 .result(permissionService.findByAction(action))
                 .build();
+    }
+
+    @GetMapping("/export")
+    @PreAuthorize("hasAuthority('VIEW_PERMISSIONS')")
+    public ResponseEntity<byte[]> export(
+            @RequestParam(value = "keyword", required = false) String keyword) {
+        return ExcelDownload.of(permissionService.exportExcel(keyword), "danh_sach_quyen.xlsx");
     }
 }

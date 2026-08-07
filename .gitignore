@@ -60,3 +60,6 @@ uat.env
 
 # Build/deploy artifacts
 *.tar
+
+# Docs
+docs/

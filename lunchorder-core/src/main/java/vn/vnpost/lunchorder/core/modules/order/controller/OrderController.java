@@ -11,7 +11,7 @@ import vn.vnpost.lunchorder.common.base.ApiResponse;
 import vn.vnpost.lunchorder.common.exception.RateLimitExceededException;
 import vn.vnpost.lunchorder.core.modules.order.ratelimit.OrderRateLimiter;
 import vn.vnpost.lunchorder.core.modules.order.service.OrderService;
-import vn.vnpost.lunchorder.core.modules.order.service.dto.DepartmentMemberOrderResponse;
+import vn.vnpost.lunchorder.core.modules.order.service.dto.DepartmentMealListResponse;
 import vn.vnpost.lunchorder.core.modules.order.service.dto.OrderCreateRequest;
 import vn.vnpost.lunchorder.core.modules.order.service.dto.OrderResponse;
 import vn.vnpost.lunchorder.common.security.CurrentUserId;
@@ -41,9 +41,9 @@ public class OrderController {
 
         @GetMapping("/department-today")
         @PreAuthorize("hasAuthority('CREATE_OWN_ORDER')")
-        public ApiResponse<List<DepartmentMemberOrderResponse>> getDepartmentToday(
+        public ApiResponse<DepartmentMealListResponse> getDepartmentToday(
                         @CurrentUserId Long userId) {
-                return ApiResponse.<List<DepartmentMemberOrderResponse>>builder()
+                return ApiResponse.<DepartmentMealListResponse>builder()
                                 .result(orderService.getDepartmentMealListToday(userId))
                                 .build();
         }

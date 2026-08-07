@@ -10,6 +10,7 @@ import vn.vnpost.lunchorder.system.modules.permission.entity.Permission;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 public interface PermissionRepository extends JpaRepository<Permission, Long> {
     Optional<Permission> findByAction(String action);
@@ -18,4 +19,7 @@ public interface PermissionRepository extends JpaRepository<Permission, Long> {
 
     Page<Permission> findByActionContainingIgnoreCaseOrDescriptionContainingIgnoreCase(String action,
             String description, Pageable pageable);
+
+    List<Permission> findByActionContainingIgnoreCaseOrDescriptionContainingIgnoreCase(String action,
+            String description, Sort sort);
 }

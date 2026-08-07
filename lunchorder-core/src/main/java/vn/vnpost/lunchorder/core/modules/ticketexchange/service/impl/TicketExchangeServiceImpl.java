@@ -20,19 +20,27 @@ import vn.vnpost.lunchorder.core.policy.CutOffPolicy;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.repository.TicketExchangeRepository;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.service.TicketExchangeService;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.service.dto.TicketExchangeCreateRequest;
+import vn.vnpost.lunchorder.core.modules.ticketexchange.service.dto.TicketExchangeExportResponse;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.service.dto.TicketExchangeResponse;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.event.TicketExchangeClaimedEvent;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.event.TicketMarketChangeReason;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.event.TicketMarketChangedEvent;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.service.mapstruct.TicketExchangeMapper;
 import vn.vnpost.lunchorder.system.modules.user.service.UserLookupService;
+import vn.vnpost.lunchorder.tools.excel.ExcelExportService;
 
 import vn.vnpost.lunchorder.common.enums.OrderStatus;
 import vn.vnpost.lunchorder.common.enums.TicketExchangeStatus;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.time.*;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -46,6 +54,12 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
     private final TicketExchangeMapper ticketExchangeMapper;
     private final ApplicationEventPublisher eventPublisher;
     private final CutOffPolicy cutOffPolicy;
+    private final ExcelExportService excelExportService;
+
+    private static final Set<OrderStatus> PASSABLE_STATUSES = EnumSet.of(OrderStatus.PENDING, OrderStatus.CONFIRMED);
+
+    private static final DateTimeFormatter EXPORT_DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final DateTimeFormatter EXPORT_DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
     @Override
     public PageResponse<TicketExchangeResponse> getOpenExchanges(int page, int size, String keyword) {
@@ -75,7 +89,7 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 
-        if (order.getStatus() != OrderStatus.PENDING) {
+        if (!PASSABLE_STATUSES.contains(order.getStatus())) {
             throw new AppException(ErrorCode.ORDER_CANNOT_PASS);
         }
 
@@ -158,7 +172,6 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
         ticketExchange = ticketExchangeRepository.save(ticketExchange);
 
         order.setUser(buyer);
-        order.setStatus(OrderStatus.PENDING);
         orderRepository.save(order);
 
         eventPublisher.publishEvent(new TicketExchangeClaimedEvent(
@@ -181,6 +194,54 @@ public class TicketExchangeServiceImpl implements TicketExchangeService {
                 startDate, endDate, parseStatusOrNull(status), keyword, pageable);
 
         return PageResponse.of(entityPage, toDtoList(entityPage), page, size);
+    }
+
+    @Override
+    public byte[] exportAdminExchangesExcel(LocalDate startDate, LocalDate endDate, String status, String keyword) {
+        List<TicketExchange> entities = ticketExchangeRepository.findForAdminExport(
+                startDate, endDate, parseStatusOrNull(status), keyword);
+
+        List<TicketExchangeExportResponse> rows = new ArrayList<>();
+        for (int i = 0; i < entities.size(); i++) {
+            rows.add(toExportRow(entities.get(i), i + 1));
+        }
+
+        try (ByteArrayInputStream in = excelExportService.exportToExcel(rows, "Lịch sử trao đổi vé")) {
+            return in.readAllBytes();
+        } catch (IOException e) {
+            throw new AppException(ErrorCode.EXPORT_FAILED);
+        }
+    }
+
+    private TicketExchangeExportResponse toExportRow(TicketExchange ticketExchange, int index) {
+        Order order = ticketExchange.getOrder();
+        User seller = order != null ? order.getOriginalUser() : null;
+        User buyer = ticketExchange.getBuyer();
+
+        return TicketExchangeExportResponse.builder()
+                .index(String.valueOf(index))
+                .menuDate(order != null && order.getOrderDate() != null
+                        ? order.getOrderDate().format(EXPORT_DATE_FORMAT)
+                        : "")
+                .createdAt(ticketExchange.getCreatedAt() != null
+                        ? EXPORT_DATE_TIME_FORMAT.format(ticketExchange.getCreatedAt().atZone(ZoneId.systemDefault()))
+                        : "")
+                .sellerName(seller != null ? seller.getFullName() : "")
+                .buyerName(buyer != null ? buyer.getFullName() : "")
+                .status(toStatusLabel(ticketExchange.getStatus()))
+                .build();
+    }
+
+    private String toStatusLabel(TicketExchangeStatus status) {
+        if (status == null) {
+            return "";
+        }
+        return switch (status) {
+            case OPEN -> "Mở bán";
+            case MATCHED -> "Đã ghép";
+            case CANCELLED -> "Đã hủy";
+            case EXPIRED -> "Hết hạn";
+        };
     }
 
     private List<TicketExchangeResponse> toDtoList(Page<TicketExchange> entityPage) {

@@ -9,9 +9,9 @@ import lombok.Setter;
 public class NotificationSendRequest {
     private Long userId;
 
-    @NotBlank(message = "Title is required")
+    @NotBlank(message = "Tiêu đề không được để trống.")
     private String title;
 
-    @NotBlank(message = "Content is required")
+    @NotBlank(message = "Nội dung không được để trống.")
     private String content;
 }

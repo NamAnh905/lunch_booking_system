@@ -61,8 +61,30 @@ class CutOffPolicyTest {
     }
 
     @Test
-    void getTicketLockTime_khongCoCauHinh_thiDungMacDinh1100() {
-        assertThat(policyAt("2026-07-29T09:00").getTicketLockTime()).isEqualTo(LocalTime.of(11, 0));
+    void getTicketLockTime_khongCoCauHinh_thiDungMacDinh1230() {
+        assertThat(policyAt("2026-07-29T09:00").getTicketLockTime()).isEqualTo(LocalTime.of(12, 30));
+    }
+
+    @Test
+    void getAutoConfirmTime_khongCoCauHinh_thiDungMacDinh1100() {
+        assertThat(policyAt("2026-07-29T09:00").getAutoConfirmTime()).isEqualTo(LocalTime.of(11, 0));
+    }
+
+    @Test
+    void macDinh_gioChotSoLuongSomHonGioDongChoVe() {
+        CutOffPolicy policy = policyAt("2026-07-29T09:00");
+
+        assertThat(policy.getAutoConfirmTime()).isBefore(policy.getTicketLockTime());
+    }
+
+    @Test
+    void getAutoConfirmTime_coCauHinh_thiDocDocLapVoiGioKhoaVe() {
+        givenConfig("AUTO_CONFIRM_TIME", "10:30");
+        givenConfig("TICKET_LOCK_TIME", "12:30");
+        CutOffPolicy policy = policyAt("2026-07-29T09:00");
+
+        assertThat(policy.getAutoConfirmTime()).isEqualTo(LocalTime.of(10, 30));
+        assertThat(policy.getTicketLockTime()).isEqualTo(LocalTime.of(12, 30));
     }
 
     @Test
@@ -112,12 +134,17 @@ class CutOffPolicyTest {
 
     @Test
     void isWithinExchangeWindow_dungGioKhoaVe_thiVanTrongKhung() {
-        assertThat(policyAt("2026-07-30T11:00").isWithinExchangeWindow(LocalDate.parse("2026-07-30"))).isTrue();
+        assertThat(policyAt("2026-07-30T12:30").isWithinExchangeWindow(LocalDate.parse("2026-07-30"))).isTrue();
     }
 
     @Test
     void isWithinExchangeWindow_quaGioKhoaVe_thiNgoaiKhung() {
-        assertThat(policyAt("2026-07-30T11:01").isWithinExchangeWindow(LocalDate.parse("2026-07-30"))).isFalse();
+        assertThat(policyAt("2026-07-30T12:31").isWithinExchangeWindow(LocalDate.parse("2026-07-30"))).isFalse();
+    }
+
+    @Test
+    void isWithinExchangeWindow_quaGioChotSoLuongNhungChuaKhoaVe_thiVanTrongKhung() {
+        assertThat(policyAt("2026-07-30T11:30").isWithinExchangeWindow(LocalDate.parse("2026-07-30"))).isTrue();
     }
 
     @Test

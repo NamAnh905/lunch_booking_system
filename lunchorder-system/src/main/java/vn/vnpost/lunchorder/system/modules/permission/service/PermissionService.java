@@ -19,4 +19,6 @@ public interface PermissionService {
     List<PermissionResponse> getAll();
 
     PageResponse<PermissionResponse> findAll(String keyword, int page, int size);
+
+    byte[] exportExcel(String keyword);
 }

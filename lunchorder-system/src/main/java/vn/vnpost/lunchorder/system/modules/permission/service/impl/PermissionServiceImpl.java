@@ -1,11 +1,14 @@
 package vn.vnpost.lunchorder.system.modules.permission.service.impl;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.util.List;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -24,6 +27,7 @@ import vn.vnpost.lunchorder.system.modules.permission.service.dto.PermissionCrea
 import vn.vnpost.lunchorder.system.modules.permission.service.dto.PermissionResponse;
 import vn.vnpost.lunchorder.system.modules.permission.service.dto.PermissionUpdateRequest;
 import vn.vnpost.lunchorder.system.modules.permission.service.mapstruct.PermissionMapper;
+import vn.vnpost.lunchorder.tools.excel.ExcelExportService;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +36,7 @@ public class PermissionServiceImpl implements PermissionService {
     private final PermissionRepository permissionRepository;
     private final PermissionMapper permissionMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final ExcelExportService excelExportService;
 
     @Override
     @Transactional
@@ -104,5 +109,27 @@ public class PermissionServiceImpl implements PermissionService {
         }
 
         return PageResponse.of(permissionPage, permissionMapper.toDtoList(permissionPage.getContent()), page, size);
+    }
+
+    @Override
+    public byte[] exportExcel(String keyword) {
+        try (ByteArrayInputStream in = excelExportService.exportToExcel(export(keyword), "Danh sách quyền")) {
+            return in.readAllBytes();
+        } catch (IOException e) {
+            throw new AppException(ErrorCode.EXPORT_FAILED);
+        }
+    }
+
+    private List<PermissionResponse> export(String keyword) {
+        Sort sort = Sort.by(Sort.Direction.ASC, "action");
+
+        List<Permission> permissions;
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            permissions = permissionRepository.findByActionContainingIgnoreCaseOrDescriptionContainingIgnoreCase(
+                    keyword.trim(), keyword.trim(), sort);
+        } else {
+            permissions = permissionRepository.findAll(sort);
+        }
+        return permissionMapper.toDtoList(permissions);
     }
 }

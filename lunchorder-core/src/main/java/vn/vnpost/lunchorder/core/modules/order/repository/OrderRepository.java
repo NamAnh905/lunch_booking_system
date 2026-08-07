@@ -27,6 +27,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
        Optional<Order> findByUserIdAndOrderDate(Long userId, LocalDate orderDate);
 
+       List<Order> findByUserIdAndOrderDateIn(Long userId, List<LocalDate> orderDates);
+
        @Query("SELECT COUNT(o) > 0 FROM Order o " +
                      "WHERE o.user.id = :userId AND o.orderDate >= :fromDate AND o.status <> :excludedStatus " +
                      "AND NOT EXISTS (SELECT 1 FROM TicketExchange te WHERE te.order.id = o.id AND te.status = :openStatus)")

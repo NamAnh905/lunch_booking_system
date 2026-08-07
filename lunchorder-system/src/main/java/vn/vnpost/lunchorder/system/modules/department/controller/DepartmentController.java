@@ -53,9 +53,11 @@ public class DepartmentController {
     public ApiResponse<PageResponse<DepartmentResponse>> findAll(
             @RequestParam(value = "keyword", required = false, defaultValue = "") String keyword,
             @RequestParam(value = "page", defaultValue = "1") @Min(1) int page,
-            @RequestParam(value = "size", defaultValue = "10") @Min(1) int size) {
+            @RequestParam(value = "size", defaultValue = "10") @Min(1) int size,
+            @RequestParam(value = "sortBy", required = false) String sortBy,
+            @RequestParam(value = "sortDir", required = false) String sortDir) {
         return ApiResponse.<PageResponse<DepartmentResponse>>builder()
-                .result(departmentService.findAll(keyword, page, size))
+                .result(departmentService.findAll(keyword, page, size, sortBy, sortDir))
                 .build();
     }
 

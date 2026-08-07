@@ -3,6 +3,7 @@ package vn.vnpost.lunchorder.core.modules.ticketexchange.controller;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import vn.vnpost.lunchorder.common.base.ApiResponse;
+import vn.vnpost.lunchorder.common.base.ExcelDownload;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.service.TicketExchangeService;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.service.dto.TicketExchangeResponse;
 
@@ -46,5 +48,16 @@ public class AdminTicketExchangeController {
         return ApiResponse.<PageResponse<TicketExchangeResponse>>builder()
                 .result(result)
                 .build();
+    }
+
+    @GetMapping("/export")
+    @PreAuthorize("hasAuthority('MANAGE_TICKETS')")
+    public ResponseEntity<byte[]> export(
+            @RequestParam(name = "startDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(name = "endDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "keyword", required = false) String keyword) {
+        byte[] excelData = ticketExchangeService.exportAdminExchangesExcel(startDate, endDate, status, keyword);
+        return ExcelDownload.of(excelData, "lich_su_trao_doi_ve.xlsx");
     }
 }

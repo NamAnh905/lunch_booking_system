@@ -9,6 +9,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import vn.vnpost.lunchorder.common.base.PageResponse;
 import vn.vnpost.lunchorder.common.constant.PaginationConstants;
 import vn.vnpost.lunchorder.core.modules.dish.entity.Dish;
@@ -26,6 +27,7 @@ import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuImageCreateRequest
 import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuResponse;
 import vn.vnpost.lunchorder.core.modules.menu.service.dto.MenuUpdateRequest;
 import vn.vnpost.lunchorder.core.modules.menu.service.mapstruct.MenuMapper;
+import vn.vnpost.lunchorder.core.modules.storage.service.ImageStorageService;
 import vn.vnpost.lunchorder.tools.excel.ExcelExportService;
 
 import java.io.ByteArrayInputStream;
@@ -45,11 +47,14 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class MenuServiceImpl implements MenuService {
 
+    private static final String MENU_IMAGE_FOLDER = "menus";
+
     private final MenuRepository menuRepository;
     private final MenuMapper menuMapper;
     private final DishRepository dishRepository;
     private final PriceRepository priceRepository;
     private final ExcelExportService excelExportService;
+    private final ImageStorageService imageStorageService;
 
     @Override
     @Transactional
@@ -73,17 +78,17 @@ public class MenuServiceImpl implements MenuService {
     @Override
     @Transactional
     @CacheEvict(value = "menus", allEntries = true)
-    public MenuResponse createImageMenu(MenuImageCreateRequest request) {
+    public MenuResponse createImageMenu(MenuImageCreateRequest request, MultipartFile image) {
         LocalDate monday = request.getWeekDate().with(DayOfWeek.MONDAY);
 
         if (menuRepository.findByMenuDateAndType(monday, MenuType.IMAGE).isPresent()) {
-            throw new AppException(ErrorCode.MENU_ALREADY_EXISTS);
+            throw new AppException(ErrorCode.MENU_IMAGE_WEEK_ALREADY_EXISTS);
         }
 
         Menu menu = new Menu();
         menu.setName(request.getName());
         menu.setType(MenuType.IMAGE);
-        menu.setImageUrl(request.getImageUrl());
+        menu.setImageUrl(imageStorageService.upload(image, MENU_IMAGE_FOLDER));
         menu.setMenuDate(monday);
         menu.setStatus("ACTIVE");
         menu.setDishes(new ArrayList<>());
@@ -95,7 +100,7 @@ public class MenuServiceImpl implements MenuService {
     @Override
     @Transactional
     @CacheEvict(value = "menus", allEntries = true)
-    public MenuResponse updateImageMenu(Long id, MenuImageCreateRequest request) {
+    public MenuResponse updateImageMenu(Long id, MenuImageCreateRequest request, MultipartFile image) {
         Menu menu = menuRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.MENU_NOT_FOUND));
 
@@ -103,12 +108,15 @@ public class MenuServiceImpl implements MenuService {
 
         Optional<Menu> existing = menuRepository.findByMenuDateAndType(monday, MenuType.IMAGE);
         if (existing.isPresent() && !existing.get().getId().equals(id)) {
-            throw new AppException(ErrorCode.MENU_ALREADY_EXISTS);
+            throw new AppException(ErrorCode.MENU_IMAGE_WEEK_ALREADY_EXISTS);
+        }
+
+        if (image != null && !image.isEmpty()) {
+            menu.setImageUrl(imageStorageService.upload(image, MENU_IMAGE_FOLDER));
         }
 
         menu.setName(request.getName());
         menu.setType(MenuType.IMAGE);
-        menu.setImageUrl(request.getImageUrl());
         menu.setMenuDate(monday);
 
         menu = menuRepository.save(menu);

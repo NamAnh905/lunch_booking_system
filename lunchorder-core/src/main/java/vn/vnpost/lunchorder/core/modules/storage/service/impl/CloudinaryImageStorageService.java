@@ -1,6 +1,7 @@
 package vn.vnpost.lunchorder.core.modules.storage.service.impl;
 
 import com.cloudinary.Cloudinary;
+import com.cloudinary.Transformation;
 import com.cloudinary.utils.ObjectUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +22,8 @@ public class CloudinaryImageStorageService implements ImageStorageService {
 
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
     private static final Set<String> ALLOWED_FORMATS = Set.of("jpg", "jpeg", "png", "webp");
-    private static final long MAX_IMAGE_SIZE_BYTES = 5L * 1024 * 1024;
+    private static final long MAX_IMAGE_SIZE_BYTES = 10L * 1024 * 1024;
+    private static final int MAX_IMAGE_WIDTH = 2000;
 
     private final Cloudinary cloudinary;
     private final Tika tika = new Tika();
@@ -46,7 +48,11 @@ public class CloudinaryImageStorageService implements ImageStorageService {
                     ObjectUtils.asMap(
                             "folder", folder,
                             "resource_type", "image",
-                            "allowed_formats", ALLOWED_FORMATS));
+                            "allowed_formats", ALLOWED_FORMATS,
+                            "transformation", new Transformation<>()
+                                    .width(MAX_IMAGE_WIDTH)
+                                    .crop("limit")
+                                    .quality("auto")));
             return (String) result.get("secure_url");
         } catch (AppException e) {
             throw e;

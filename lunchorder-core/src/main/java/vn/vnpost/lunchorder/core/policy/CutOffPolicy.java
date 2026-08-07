@@ -27,7 +27,10 @@ public class CutOffPolicy {
     private static final LocalTime DEFAULT_CUT_OFF_TIME = LocalTime.of(14, 45);
 
     private static final String TICKET_LOCK_TIME_KEY = "TICKET_LOCK_TIME";
-    private static final LocalTime DEFAULT_TICKET_LOCK_TIME = LocalTime.of(11, 00);
+    private static final LocalTime DEFAULT_TICKET_LOCK_TIME = LocalTime.of(12, 30);
+
+    private static final String AUTO_CONFIRM_TIME_KEY = "AUTO_CONFIRM_TIME";
+    private static final LocalTime DEFAULT_AUTO_CONFIRM_TIME = LocalTime.of(11, 00);
 
     private static final String HOLIDAYS_KEY = "HOLIDAYS";
 
@@ -46,6 +49,10 @@ public class CutOffPolicy {
 
     public LocalTime getTicketLockTime() {
         return readTime(TICKET_LOCK_TIME_KEY, DEFAULT_TICKET_LOCK_TIME);
+    }
+
+    public LocalTime getAutoConfirmTime() {
+        return readTime(AUTO_CONFIRM_TIME_KEY, DEFAULT_AUTO_CONFIRM_TIME);
     }
 
     private LocalTime readTime(String configKey, LocalTime defaultValue) {

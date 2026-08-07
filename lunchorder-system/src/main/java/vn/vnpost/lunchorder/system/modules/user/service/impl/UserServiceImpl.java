@@ -2,9 +2,15 @@ package vn.vnpost.lunchorder.system.modules.user.service.impl;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 import jakarta.persistence.criteria.Predicate;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -15,8 +21,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import vn.vnpost.lunchorder.common.audit.AuditEvent;
 import vn.vnpost.lunchorder.common.base.PageResponse;
 import vn.vnpost.lunchorder.common.constant.PaginationConstants;
@@ -30,24 +38,41 @@ import vn.vnpost.lunchorder.system.modules.auth.service.dto.ProfileUpdateRequest
 import vn.vnpost.lunchorder.system.modules.user.repository.UserRepository;
 import vn.vnpost.lunchorder.system.modules.user.service.UserService;
 import vn.vnpost.lunchorder.system.modules.user.service.dto.UserCreateRequest;
+import vn.vnpost.lunchorder.system.modules.user.service.dto.UserImportErrorResponse;
+import vn.vnpost.lunchorder.system.modules.user.service.dto.UserImportResultResponse;
 import vn.vnpost.lunchorder.system.modules.user.service.dto.UserResponse;
 import vn.vnpost.lunchorder.system.modules.user.service.dto.UserUpdateRequest;
+import vn.vnpost.lunchorder.system.modules.user.service.helper.UserImportExcelHelper;
 import vn.vnpost.lunchorder.system.modules.user.service.mapstruct.UserMapper;
 import vn.vnpost.lunchorder.system.modules.role.repository.RoleRepository;
 import vn.vnpost.lunchorder.system.modules.role.entity.Role;
 import vn.vnpost.lunchorder.tools.excel.ExcelExportService;
+import vn.vnpost.lunchorder.tools.excel.ExcelImportService;
+import vn.vnpost.lunchorder.tools.excel.ExcelRow;
 import org.springframework.transaction.annotation.Transactional;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.TreeSet;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @Transactional(readOnly = true)
 public class UserServiceImpl implements UserService {
+    private static final int MAX_IMPORT_ROWS = 500;
+    private static final String DEFAULT_ROLE_CODE = "USER";
+    private static final String XLSX_EXTENSION = ".xlsx";
+
+    private static final Sort DEFAULT_SORT = Sort.by(Sort.Direction.DESC, "id");
+    private static final Map<String, String> SORTABLE_FIELDS = Map.of(
+            "fullName", "fullName",
+            "department", "department.name");
+
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final DepartmentRepository departmentRepository;
@@ -55,6 +80,9 @@ public class UserServiceImpl implements UserService {
     private final RoleRepository roleRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final ExcelExportService excelExportService;
+    private final ExcelImportService excelImportService;
+    private final UserImportExcelHelper userImportExcelHelper;
+    private final Validator validator;
 
     private Set<String> roleCodesOf(User user) {
         if (user.getRoles() == null) {
@@ -201,9 +229,11 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Cacheable(value = "users", key = "'list:' + #page + '-' + #size + '-' + #keyword + '-' + #departmentIds + '-' + #isActives")
-    public PageResponse<UserResponse> findAll(int page, int size, String keyword, List<Long> departmentIds, List<Boolean> isActives) {
-        Pageable pageable = PaginationConstants.toPageable(page, size, Sort.by(Sort.Direction.DESC, "id"));
+    @Cacheable(value = "users", key = "'list:' + #page + '-' + #size + '-' + #keyword + '-' + #departmentIds + '-' + #isActives + '-' + #sortBy + '-' + #sortDir")
+    public PageResponse<UserResponse> findAll(int page, int size, String keyword, List<Long> departmentIds,
+            List<Boolean> isActives, String sortBy, String sortDir) {
+        Sort sort = PaginationConstants.toSort(sortBy, sortDir, SORTABLE_FIELDS, DEFAULT_SORT);
+        Pageable pageable = PaginationConstants.toPageable(page, size, sort);
 
         Specification<User> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -254,6 +284,156 @@ public class UserServiceImpl implements UserService {
             users = userRepository.findAll(sort);
         }
         return userMapper.toDtoList(users);
+    }
+
+    @Override
+    public byte[] buildImportTemplate() {
+        return userImportExcelHelper.buildTemplate();
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "users", allEntries = true)
+    public UserImportResultResponse importExcel(MultipartFile file) {
+        List<ExcelRow> rows = readImportRows(file);
+
+        Map<String, Department> departmentIndex = buildDepartmentIndex();
+        Map<String, Role> roleIndex = roleRepository.findAll().stream()
+                .collect(Collectors.toMap(role -> normalizeCode(role.getCode()), Function.identity(), (a, b) -> a));
+        Set<String> takenUsernames = new HashSet<>(userRepository.findExistingUsernames(rows.stream()
+                .map(row -> row.cell(UserImportExcelHelper.COLUMN_USERNAME))
+                .collect(Collectors.toSet())));
+
+        List<UserImportErrorResponse> errors = new ArrayList<>();
+        List<User> newUsers = new ArrayList<>();
+
+        for (ExcelRow row : rows) {
+            List<String> messages = new ArrayList<>();
+            User user = buildImportedUser(row, departmentIndex, roleIndex, takenUsernames, messages);
+
+            if (messages.isEmpty()) {
+                newUsers.add(user);
+                takenUsernames.add(user.getUsername());
+            } else {
+                errors.add(new UserImportErrorResponse(row.rowNumber(),
+                        row.cell(UserImportExcelHelper.COLUMN_USERNAME), String.join(" ", messages)));
+            }
+        }
+
+        if (!newUsers.isEmpty()) {
+            userRepository.saveAll(newUsers);
+        }
+
+        UserImportResultResponse result =
+                new UserImportResultResponse(rows.size(), newUsers.size(), errors.size(), errors);
+        eventPublisher.publishEvent(new AuditEvent("IMPORT_USERS", "User", null, null, result));
+        return result;
+    }
+
+    private List<ExcelRow> readImportRows(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new AppException(ErrorCode.IMPORT_FILE_REQUIRED);
+        }
+
+        String filename = file.getOriginalFilename();
+        if (filename == null || !filename.toLowerCase(Locale.ROOT).endsWith(XLSX_EXTENSION)) {
+            throw new AppException(ErrorCode.IMPORT_FILE_TYPE_NOT_ALLOWED);
+        }
+
+        List<ExcelRow> rows;
+        try (InputStream in = file.getInputStream()) {
+            rows = excelImportService.readRows(in, UserImportExcelHelper.COLUMN_COUNT,
+                    UserImportExcelHelper.HEADER_ROW_COUNT);
+        } catch (IOException | RuntimeException e) {
+            log.error("Đọc file Excel import người dùng thất bại: {}", filename, e);
+            throw new AppException(ErrorCode.IMPORT_FILE_UNREADABLE);
+        }
+
+        if (rows.isEmpty()) {
+            throw new AppException(ErrorCode.IMPORT_FILE_EMPTY);
+        }
+        if (rows.size() > MAX_IMPORT_ROWS) {
+            throw new AppException(ErrorCode.IMPORT_FILE_TOO_MANY_ROWS);
+        }
+        return rows;
+    }
+
+    private User buildImportedUser(ExcelRow row, Map<String, Department> departmentIndex, Map<String, Role> roleIndex,
+            Set<String> takenUsernames, List<String> messages) {
+        UserCreateRequest request = new UserCreateRequest();
+        request.setUsername(row.cell(UserImportExcelHelper.COLUMN_USERNAME));
+        request.setPassword(row.cell(UserImportExcelHelper.COLUMN_PASSWORD));
+        request.setFullName(row.cell(UserImportExcelHelper.COLUMN_FULL_NAME));
+        request.setDepartment(row.cell(UserImportExcelHelper.COLUMN_DEPARTMENT));
+
+        validator.validate(request).stream()
+                .map(ConstraintViolation::getMessage)
+                .sorted()
+                .forEach(messages::add);
+
+        if (takenUsernames.contains(request.getUsername())) {
+            messages.add("Tài khoản đã tồn tại trong hệ thống hoặc bị trùng trong file.");
+        }
+
+        Department department = departmentIndex.get(normalizeName(request.getDepartment()));
+        if (department == null && !request.getDepartment().isEmpty()) {
+            messages.add("Không tìm thấy phòng ban \"" + request.getDepartment() + "\".");
+        }
+
+        Set<Role> roles = resolveImportRoles(row.cell(UserImportExcelHelper.COLUMN_ROLES), roleIndex, messages);
+
+        if (!messages.isEmpty()) {
+            return null;
+        }
+
+        User user = userMapper.toEntity(request);
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setDepartment(department);
+        user.setRoles(roles);
+        user.setIsActive(true);
+        return user;
+    }
+
+    private Set<Role> resolveImportRoles(String rawRoles, Map<String, Role> roleIndex, List<String> messages) {
+        Set<String> codes = new LinkedHashSet<>();
+        for (String part : rawRoles.split(",")) {
+            String code = normalizeCode(part);
+            if (!code.isEmpty()) {
+                codes.add(code);
+            }
+        }
+        if (codes.isEmpty()) {
+            codes.add(DEFAULT_ROLE_CODE);
+        }
+
+        Set<Role> roles = new HashSet<>();
+        for (String code : codes) {
+            Role role = roleIndex.get(code);
+            if (role == null) {
+                messages.add("Không tìm thấy vai trò \"" + code + "\".");
+            } else {
+                roles.add(role);
+            }
+        }
+        return roles;
+    }
+
+    private Map<String, Department> buildDepartmentIndex() {
+        Map<String, Department> index = new HashMap<>();
+        for (Department department : departmentRepository.findAll()) {
+            index.putIfAbsent(normalizeName(department.getName()), department);
+            index.putIfAbsent(normalizeName(department.getCode()), department);
+        }
+        index.remove("");
+        return index;
+    }
+
+    private String normalizeName(String value) {
+        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeCode(String value) {
+        return value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
     }
 
     @Override

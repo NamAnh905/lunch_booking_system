@@ -30,6 +30,9 @@ import vn.vnpost.lunchorder.system.modules.department.service.mapstruct.Departme
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class DepartmentServiceImpl implements DepartmentService {
+    private static final Sort DEFAULT_SORT = Sort.by(Sort.Direction.DESC, "id");
+    private static final Map<String, String> SORTABLE_FIELDS = Map.of("name", "name");
+
     private final DepartmentRepository departmentRepository;
     private final DepartmentMapper departmentMapper;
 
@@ -95,9 +98,10 @@ public class DepartmentServiceImpl implements DepartmentService {
     }
 
     @Override
-    @Cacheable(value = "departments", key = "'findAll:' + #keyword + ':' + #page + ':' + #size")
-    public PageResponse<DepartmentResponse> findAll(String keyword, int page, int size) {
-        Pageable pageable = PaginationConstants.toPageable(page, size, Sort.by(Sort.Direction.DESC, "id"));
+    @Cacheable(value = "departments", key = "'findAll:' + #keyword + ':' + #page + ':' + #size + ':' + #sortBy + ':' + #sortDir")
+    public PageResponse<DepartmentResponse> findAll(String keyword, int page, int size, String sortBy, String sortDir) {
+        Sort sort = PaginationConstants.toSort(sortBy, sortDir, SORTABLE_FIELDS, DEFAULT_SORT);
+        Pageable pageable = PaginationConstants.toPageable(page, size, sort);
 
         Page<Department> departmentPage;
         if (keyword != null && !keyword.trim().isEmpty()) {

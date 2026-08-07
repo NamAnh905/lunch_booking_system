@@ -8,9 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.entity.TicketExchange;
 import vn.vnpost.lunchorder.system.modules.user.entity.User;
-import vn.vnpost.lunchorder.common.enums.OrderStatus;
 import vn.vnpost.lunchorder.common.enums.TicketExchangeStatus;
-import vn.vnpost.lunchorder.core.modules.order.repository.OrderRepository;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.event.TicketExchangeExpiredEvent;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.event.TicketMarketChangeReason;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.event.TicketMarketChangedEvent;
@@ -22,12 +20,14 @@ import java.time.LocalTime;
 import java.util.List;
 
 /**
- * Once {@code TICKET_LOCK_TIME} on the menu date has passed: reverts market
- * tickets still {@code OPEN} to their original owner (who must then use the
- * ticket themselves), and confirms every remaining {@code PENDING} order on or
- * before that date. Both actions fire from the same config value because the order
- * list is only final once the market is closed — there is no reason to
- * confirm earlier or later than that.
+ * Closes the ticket market: once {@code TICKET_LOCK_TIME} on the menu date has
+ * passed, tickets still {@code OPEN} revert to their original owner, who must
+ * then use the ticket themselves.
+ *
+ * <p>The market stays open past {@code AUTO_CONFIRM_TIME} on purpose — the
+ * headcount sent to the kitchen is already fixed by then, so trading a ticket
+ * afterwards only changes who eats, not how many meals are cooked. Order
+ * confirmation is handled separately by {@code OrderAutoConfirmScheduler}.</p>
  *
  * <p>Runs every minute rather than a fixed cron window, because
  * {@code TICKET_LOCK_TIME} is admin-configurable and a fixed window would
@@ -39,21 +39,17 @@ import java.util.List;
 public class TicketExchangeAutoRevertScheduler {
 
     private final TicketExchangeRepository ticketExchangeRepository;
-    private final OrderRepository orderRepository;
     private final CutOffPolicy cutOffPolicy;
     private final ApplicationEventPublisher eventPublisher;
 
     @Scheduled(cron = "0 * * * * ?")
     @Transactional
-    public void revertExpiredMarketTicketsAndConfirmOrders() {
-        LocalTime lockTime = cutOffPolicy.getTicketLockTime();
-        if (LocalTime.now().isBefore(lockTime)) {
-            return;
-        }
-
+    public void revertExpiredMarketTickets() {
         LocalDate today = LocalDate.now();
-        revertExpiredMarketTickets(today, lockTime);
-        confirmPendingOrders(today, lockTime);
+        LocalTime lockTime = cutOffPolicy.getTicketLockTime();
+        LocalDate cutoffDate = LocalTime.now().isBefore(lockTime) ? today.minusDays(1) : today;
+
+        revertExpiredMarketTickets(cutoffDate, lockTime);
     }
 
     private void revertExpiredMarketTickets(LocalDate today, LocalTime lockTime) {
@@ -75,17 +71,5 @@ public class TicketExchangeAutoRevertScheduler {
         }
 
         eventPublisher.publishEvent(new TicketMarketChangedEvent(TicketMarketChangeReason.EXPIRED));
-    }
-
-    private void confirmPendingOrders(LocalDate today, LocalTime lockTime) {
-        try {
-            int confirmed = orderRepository.updateStatusByOrderDateLessThanEqualAndCurrentStatus(
-                    today, OrderStatus.PENDING, OrderStatus.CONFIRMED);
-            if (confirmed > 0) {
-                log.info("Auto-confirm: {} order(s) confirmed for date {} past lock time {}", confirmed, today, lockTime);
-            }
-        } catch (Exception e) {
-            log.error("Auto-confirm: failed to confirm orders for date {}", today, e);
-        }
     }
 }

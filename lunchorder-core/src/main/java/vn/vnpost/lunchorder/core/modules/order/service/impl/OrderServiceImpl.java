@@ -21,6 +21,7 @@ import vn.vnpost.lunchorder.common.enums.OrderStatus;
 import vn.vnpost.lunchorder.common.enums.TicketSource;
 import vn.vnpost.lunchorder.common.enums.TicketExchangeStatus;
 
+import vn.vnpost.lunchorder.core.modules.guestmeal.repository.GuestMealRepository;
 import vn.vnpost.lunchorder.core.modules.ticketexchange.repository.TicketExchangeRepository;
 import vn.vnpost.lunchorder.core.modules.price.service.MealPricePolicy;
 import vn.vnpost.lunchorder.core.policy.CutOffPolicy;
@@ -28,7 +29,12 @@ import vn.vnpost.lunchorder.core.policy.OrderableDates;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -42,6 +48,7 @@ public class OrderServiceImpl implements OrderService {
     private final MenuRepository menuRepository;
     private final UserLookupService userLookupService;
     private final TicketExchangeRepository ticketExchangeRepository;
+    private final GuestMealRepository guestMealRepository;
     private final OrderMapper orderMapper;
     private final MealPricePolicy mealPricePolicy;
     private final CutOffPolicy cutOffPolicy;
@@ -54,13 +61,27 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public List<DepartmentMemberOrderResponse> getDepartmentMealListToday(Long userId) {
+    public DepartmentMealListResponse getDepartmentMealListToday(Long userId) {
         User user = userLookupService.getById(userId);
         if (user.getDepartment() == null) {
-            return List.of();
+            return new DepartmentMealListResponse(List.of(), 0, 0);
         }
-        return orderRepository.findDepartmentMealListByDate(
-                user.getDepartment().getId(), cutOffPolicy.today(), OrderStatus.CANCELLED);
+
+        LocalDate today = cutOffPolicy.today();
+        Long departmentId = user.getDepartment().getId();
+
+        List<DepartmentMemberOrderResponse> members = orderRepository.findDepartmentMealListByDate(
+                departmentId, today, OrderStatus.CANCELLED);
+
+        return guestMealRepository.findDailySummary(today, departmentId).stream()
+                .findFirst()
+                .map(row -> new DepartmentMealListResponse(members,
+                        toInt(row.getNormalMealCount()), toInt(row.getSpecialMealCount())))
+                .orElseGet(() -> new DepartmentMealListResponse(members, 0, 0));
+    }
+
+    private int toInt(Long value) {
+        return value == null ? 0 : value.intValue();
     }
 
     @Override
@@ -69,20 +90,60 @@ public class OrderServiceImpl implements OrderService {
         User user = userLookupService.getById(userId);
         OrderableDates orderableDates = OrderableDates.snapshot(cutOffPolicy);
         MealPrices mealPrices = MealPrices.snapshot(mealPricePolicy);
+        List<OrderItemRequest> items = request.getOrders();
+        int size = items.size();
 
-        return request.getOrders().stream()
-                .map(item -> createSingleOrder(user, item, orderableDates, mealPrices))
-                .toList();
-    }
+        OrderResponse[] responses = new OrderResponse[size];
+        Order[] entitiesToPersist = new Order[size];
+        Set<LocalDate> seenDates = new HashSet<>();
+        List<LocalDate> datesToLookUp = new ArrayList<>();
 
-    private OrderResponse createSingleOrder(User user, OrderItemRequest item,
-            OrderableDates orderableDates, MealPrices mealPrices) {
-        try {
-            orderableDates.assertOrderable(item.getOrderDate());
-            return orderMapper.toDto(saveOrder(user, item, mealPrices));
-        } catch (AppException e) {
-            return failedResponse(item.getOrderDate(), e.getErrorCode().getMessage());
+        for (int i = 0; i < size; i++) {
+            LocalDate orderDate = items.get(i).getOrderDate();
+            try {
+                orderableDates.assertOrderable(orderDate);
+                if (!seenDates.add(orderDate)) {
+                    throw new AppException(ErrorCode.ORDER_ALREADY_EXISTS);
+                }
+                datesToLookUp.add(orderDate);
+            } catch (AppException e) {
+                responses[i] = failedResponse(orderDate, e.getErrorCode().getMessage());
+            }
         }
+
+        Map<LocalDate, Order> existingByDate = datesToLookUp.isEmpty()
+                ? Map.of()
+                : orderRepository.findByUserIdAndOrderDateIn(userId, datesToLookUp).stream()
+                        .collect(Collectors.toMap(Order::getOrderDate, order -> order));
+
+        for (int i = 0; i < size; i++) {
+            if (responses[i] != null) {
+                continue;
+            }
+            OrderItemRequest item = items.get(i);
+            Order existing = existingByDate.get(item.getOrderDate());
+            try {
+                entitiesToPersist[i] = existing != null
+                        ? prepareReactivation(existing, user, item, mealPrices)
+                        : prepareNewOrder(user, item, mealPrices);
+            } catch (AppException e) {
+                responses[i] = failedResponse(item.getOrderDate(), e.getErrorCode().getMessage());
+            }
+        }
+
+        for (int i = 0; i < size; i++) {
+            if (entitiesToPersist[i] != null) {
+                orderRepository.save(entitiesToPersist[i]);
+            }
+        }
+        orderRepository.flush();
+
+        for (int i = 0; i < size; i++) {
+            if (entitiesToPersist[i] != null) {
+                responses[i] = orderMapper.toDto(entitiesToPersist[i]);
+            }
+        }
+        return List.of(responses);
     }
 
     private OrderResponse failedResponse(LocalDate orderDate, String errorMessage) {
@@ -93,41 +154,37 @@ public class OrderServiceImpl implements OrderService {
         return response;
     }
 
-    private Order saveOrder(User user, OrderItemRequest item, MealPrices mealPrices) {
-        LocalDate orderDate = item.getOrderDate();
-        MealType requestedType = Boolean.TRUE.equals(item.getIsSpecial()) ? MealType.SPECIAL : MealType.NORMAL;
-
-        Menu menu = resolveMenu(orderDate, requestedType);
-        MealType mealType = resolveMealType(menu, requestedType);
-        BigDecimal price = resolveOrderPrice(menu, mealType, mealPrices);
-
-        return orderRepository.findByUserIdAndOrderDate(user.getId(), orderDate)
-                .map(existing -> reactivate(existing, user, menu, mealType, price))
-                .orElseGet(() -> orderItemPersister.persist(newOrder(user, orderDate, menu, mealType, price)));
-    }
-
-    private Order reactivate(Order existing, User user, Menu menu, MealType mealType, BigDecimal price) {
+    private Order prepareReactivation(Order existing, User user, OrderItemRequest item, MealPrices mealPrices) {
         if (existing.getStatus() != OrderStatus.CANCELLED) {
             throw new AppException(ErrorCode.ORDER_ALREADY_EXISTS);
         }
 
+        MealType requestedType = Boolean.TRUE.equals(item.getIsSpecial()) ? MealType.SPECIAL : MealType.NORMAL;
+        Menu menu = resolveMenu(item.getOrderDate(), requestedType);
+        MealType mealType = resolveMealType(menu, requestedType);
+
         existing.setStatus(OrderStatus.PENDING);
         existing.setMenu(menu);
         existing.setMealType(mealType);
-        existing.setPrice(price);
+        existing.setPrice(resolveOrderPrice(menu, mealType, mealPrices));
         existing.setTicketSource(TicketSource.STANDARD);
         existing.setIsPrinted(false);
         existing.setOriginalUser(user);
         return existing;
     }
 
-    private Order newOrder(User user, LocalDate orderDate, Menu menu, MealType mealType, BigDecimal price) {
+    private Order prepareNewOrder(User user, OrderItemRequest item, MealPrices mealPrices) {
+        LocalDate orderDate = item.getOrderDate();
+        MealType requestedType = Boolean.TRUE.equals(item.getIsSpecial()) ? MealType.SPECIAL : MealType.NORMAL;
+        Menu menu = resolveMenu(orderDate, requestedType);
+        MealType mealType = resolveMealType(menu, requestedType);
+
         Order order = new Order();
         order.setUser(user);
         order.setOrderDate(orderDate);
         order.setMenu(menu);
         order.setMealType(mealType);
-        order.setPrice(price);
+        order.setPrice(resolveOrderPrice(menu, mealType, mealPrices));
         order.setStatus(OrderStatus.PENDING);
         order.setTicketSource(TicketSource.STANDARD);
         order.setOriginalUser(user);

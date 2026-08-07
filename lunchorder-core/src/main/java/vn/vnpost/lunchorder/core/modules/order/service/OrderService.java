@@ -20,5 +20,5 @@ public interface OrderService {
 
     OrderResponse updateOrderStatus(Long orderId, OrderStatusUpdateRequest request);
 
-    List<DepartmentMemberOrderResponse> getDepartmentMealListToday(Long userId);
+    DepartmentMealListResponse getDepartmentMealListToday(Long userId);
 }

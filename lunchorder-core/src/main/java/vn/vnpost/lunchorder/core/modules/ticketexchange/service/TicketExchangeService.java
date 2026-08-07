@@ -20,4 +20,6 @@ public interface TicketExchangeService {
 
     PageResponse<TicketExchangeResponse> getAdminExchanges(int page, int size, LocalDate startDate, LocalDate endDate,
             String status, String keyword);
+
+    byte[] exportAdminExchangesExcel(LocalDate startDate, LocalDate endDate, String status, String keyword);
 }
