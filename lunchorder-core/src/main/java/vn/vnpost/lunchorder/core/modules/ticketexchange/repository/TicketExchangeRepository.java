@@ -74,7 +74,7 @@ public interface TicketExchangeRepository extends JpaRepository<TicketExchange, 
     Optional<TicketExchange> findByIdForUpdate(@Param("id") Long id);
 
 
-    @EntityGraph(attributePaths = {"order", "order.originalUser", "order.menu", "buyer"})
+    @EntityGraph(attributePaths = {"order", "order.originalUser", "order.originalUser.department", "order.menu", "buyer"})
     @Query("SELECT t FROM TicketExchange t " +
            "LEFT JOIN t.order o " +
            "LEFT JOIN o.originalUser ou " +

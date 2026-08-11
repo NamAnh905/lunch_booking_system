@@ -17,6 +17,7 @@ public class TicketExchangeResponse {
     private Long orderId;
     private String sellerName;
     private Long sellerId;
+    private String departmentName;
     private LocalDate menuDate;
     private BigDecimal price;
     private MealType mealType;

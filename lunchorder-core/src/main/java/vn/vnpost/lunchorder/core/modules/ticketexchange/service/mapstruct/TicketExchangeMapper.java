@@ -16,6 +16,7 @@ public interface TicketExchangeMapper {
     @Mapping(target = "orderId", source = "order.id")
     @Mapping(target = "sellerName", source = "order.originalUser.fullName")
     @Mapping(target = "sellerId", source = "order.originalUser.id")
+    @Mapping(target = "departmentName", source = "order.originalUser.department.name")
     @Mapping(target = "menuDate", source = "order.orderDate")
     @Mapping(target = "price", source = "order.price")
     @Mapping(target = "mealType", source = "order.mealType")
